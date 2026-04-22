@@ -15,6 +15,9 @@
           <li><a href="#about">About</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">
+          Dark mode
+        </button>
       </div>
     </nav>
 
@@ -29,8 +32,8 @@
       <p id="message" class="message" aria-live="polite"></p>
     </header>
 
-    <main class="container" id="projects" aria-label="Projects section">
-      <section class="projects">
+    <main class="container" aria-label="Homepage content">
+      <section class="projects" id="projects" aria-label="Projects section">
         <article class="project-card">
           <h2>Portfolio Website</h2>
           <p>
@@ -55,9 +58,20 @@
           </p>
         </article>
       </section>
+
+      <section class="contact" id="contact" aria-label="Contact section">
+        <h2>Contact</h2>
+        <p class="contact-text">
+          Have a question or want to collaborate? Send a quick message and I will get back to you.
+        </p>
+        <div class="contact-links">
+          <a href="mailto:hello@example.com">hello@example.com</a>
+          <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">LinkedIn</a>
+        </div>
+      </section>
     </main>
 
-    <footer class="site-footer" id="contact">
+    <footer class="site-footer">
       <div class="container footer-inner">
         <p>© 2026 Colinspace. All rights reserved.</p>
         <a href="mailto:hello@example.com">hello@example.com</a>

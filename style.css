@@ -1,11 +1,23 @@
 :root {
   --bg: #f4f7fb;
+  --bg-top: #eef3ff;
   --surface: #ffffff;
   --text: #1f2937;
   --muted: #5b6472;
   --accent: #2563eb;
   --accent-dark: #1d4ed8;
   --border: #dbe4f0;
+}
+
+body.dark-mode {
+  --bg: #0f172a;
+  --bg-top: #111827;
+  --surface: #1e293b;
+  --text: #e5e7eb;
+  --muted: #cbd5e1;
+  --accent: #60a5fa;
+  --accent-dark: #93c5fd;
+  --border: #334155;
 }
 
 * {
@@ -16,8 +28,9 @@ body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text);
-  background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 30%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 30%, var(--bg) 100%);
   line-height: 1.6;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .container {
@@ -29,7 +42,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(6px);
 }
@@ -39,6 +52,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 0;
+  gap: 1rem;
 }
 
 .brand {
@@ -64,6 +78,16 @@ body {
 
 .nav-links a:hover {
   color: var(--accent);
+}
+
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .hero {
@@ -121,15 +145,19 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  padding: 0 0 3.5rem;
+  padding: 0 0 2rem;
 }
 
-.project-card {
+.project-card,
+.contact {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 1.3rem;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.project-card {
+  padding: 1.3rem;
 }
 
 .project-card h2 {
@@ -142,9 +170,36 @@ body {
   color: var(--muted);
 }
 
+.contact {
+  padding: 1.4rem;
+  margin: 0 0 3.5rem;
+}
+
+.contact h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.contact-text {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.contact-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.contact-links a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .site-footer {
   border-top: 1px solid var(--border);
-  background: #f8fbff;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
 .footer-inner {
