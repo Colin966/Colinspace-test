@@ -7,12 +7,43 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main>
-      <h1>Hello</h1>
-      <p>This is a simple static website.</p>
-      <button id="btn">Click me</button>
-      <p id="message"></p>
+    <header class="hero">
+      <p class="eyebrow">Simple Static Website</p>
+      <h1>Build a clean and modern homepage</h1>
+      <p class="hero-text">
+        This page uses beginner-friendly HTML, CSS, and JavaScript to create a
+        polished layout with clear spacing and readable typography.
+      </p>
+      <button id="btn" class="hero-button">Get Started</button>
+      <p id="message" class="message" aria-live="polite"></p>
+    </header>
+
+    <main class="features" aria-label="Homepage features">
+      <article class="feature-card">
+        <h2>Clean Layout</h2>
+        <p>
+          A centered content area with strong visual hierarchy keeps everything
+          easy to scan.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <h2>Readable Typography</h2>
+        <p>
+          Improved font sizing, line height, and spacing make the content feel
+          modern and comfortable.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <h2>Simple to Customize</h2>
+        <p>
+          The code is intentionally straightforward so beginners can edit text,
+          colors, and sections quickly.
+        </p>
+      </article>
     </main>
+
     <script src="script.js"></script>
   </body>
 </html>
