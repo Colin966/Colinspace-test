@@ -7,7 +7,18 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="hero">
+    <nav class="site-nav" aria-label="Main navigation">
+      <div class="container nav-inner">
+        <a class="brand" href="#">Colinspace</a>
+        <ul class="nav-links">
+          <li><a href="#projects">Projects</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="hero container" id="about">
       <p class="eyebrow">Simple Static Website</p>
       <h1>Build a clean and modern homepage</h1>
       <p class="hero-text">
@@ -18,31 +29,40 @@
       <p id="message" class="message" aria-live="polite"></p>
     </header>
 
-    <main class="features" aria-label="Homepage features">
-      <article class="feature-card">
-        <h2>Clean Layout</h2>
-        <p>
-          A centered content area with strong visual hierarchy keeps everything
-          easy to scan.
-        </p>
-      </article>
+    <main class="container" id="projects" aria-label="Projects section">
+      <section class="projects">
+        <article class="project-card">
+          <h2>Portfolio Website</h2>
+          <p>
+            A personal site for showcasing case studies, writing, and contact
+            information with a lightweight, responsive layout.
+          </p>
+        </article>
 
-      <article class="feature-card">
-        <h2>Readable Typography</h2>
-        <p>
-          Improved font sizing, line height, and spacing make the content feel
-          modern and comfortable.
-        </p>
-      </article>
+        <article class="project-card">
+          <h2>Task Tracker App</h2>
+          <p>
+            A simple productivity app focused on daily priorities, quick task
+            updates, and clean visual organization.
+          </p>
+        </article>
 
-      <article class="feature-card">
-        <h2>Simple to Customize</h2>
-        <p>
-          The code is intentionally straightforward so beginners can edit text,
-          colors, and sections quickly.
-        </p>
-      </article>
+        <article class="project-card">
+          <h2>Analytics Dashboard</h2>
+          <p>
+            A dashboard concept that highlights key metrics using clear cards,
+            concise labels, and a modern visual hierarchy.
+          </p>
+        </article>
+      </section>
     </main>
+
+    <footer class="site-footer" id="contact">
+      <div class="container footer-inner">
+        <p>© 2026 Colinspace. All rights reserved.</p>
+        <a href="mailto:hello@example.com">hello@example.com</a>
+      </div>
+    </footer>
 
     <script src="script.js"></script>
   </body>

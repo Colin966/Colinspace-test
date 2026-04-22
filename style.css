@@ -20,15 +20,55 @@ body {
   line-height: 1.6;
 }
 
-.hero,
-.features {
+.container {
   width: min(980px, 92%);
   margin: 0 auto;
 }
 
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0;
+}
+
+.brand {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.nav-links a:hover {
+  color: var(--accent);
+}
+
 .hero {
   text-align: center;
-  padding: 4.5rem 0 2.5rem;
+  padding: 4.2rem 0 2.8rem;
 }
 
 .eyebrow {
@@ -77,14 +117,14 @@ body {
   color: var(--accent-dark);
 }
 
-.features {
+.projects {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   padding: 0 0 3.5rem;
 }
 
-.feature-card {
+.project-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -92,18 +132,48 @@ body {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
-.feature-card h2 {
+.project-card h2 {
   margin: 0 0 0.5rem;
   font-size: 1.2rem;
 }
 
-.feature-card p {
+.project-card p {
   margin: 0;
   color: var(--muted);
 }
 
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: #f8fbff;
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 0;
+}
+
+.site-footer p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.site-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
 @media (max-width: 800px) {
-  .features {
+  .projects {
     grid-template-columns: 1fr;
+  }
+
+  .nav-inner,
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
