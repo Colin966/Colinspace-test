@@ -25,6 +25,9 @@ const mockProjects = [
       '围绕关键业务指标设计的信息看板，通过卡片化结构与明确层级，让决策信息一目了然。',
   },
 ];
+const contactMessages = [];
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_MESSAGE_LENGTH = 500;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -39,6 +42,45 @@ function sendJson(res, statusCode, payload) {
     'Cache-Control': 'no-store',
   });
   res.end(JSON.stringify(payload));
+}
+
+// 统一读取 POST Body，避免每个接口重复写监听逻辑
+function readRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let rawBody = '';
+
+    req.on('data', (chunk) => {
+      rawBody += chunk;
+
+      // 基础保护：限制请求体大小，避免异常大包
+      if (rawBody.length > 1_000_000) {
+        reject(new Error('PAYLOAD_TOO_LARGE'));
+      }
+    });
+
+    req.on('end', () => resolve(rawBody));
+    req.on('error', reject);
+  });
+}
+
+function validateContactPayload(payload) {
+  const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+  const email = typeof payload.email === 'string' ? payload.email.trim() : '';
+  const message = typeof payload.message === 'string' ? payload.message.trim() : '';
+
+  if (!name || !email || !message) {
+    return { valid: false, message: 'name、email、message 都是必填项' };
+  }
+
+  if (!emailPattern.test(email)) {
+    return { valid: false, message: 'email 格式不正确' };
+  }
+
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return { valid: false, message: `message 不能超过 ${MAX_MESSAGE_LENGTH} 个字符` };
+  }
+
+  return { valid: true, payload: { name, email, message } };
 }
 
 function serveStaticFile(reqPath, res) {
@@ -65,13 +107,45 @@ function serveStaticFile(reqPath, res) {
   });
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   // Projects 接口：返回 mock 数据
   if (req.method === 'GET' && url.pathname === '/api/projects') {
     sendJson(res, 200, { projects: mockProjects });
     return;
+  }
+
+  // Contact 接口：接收联系表单提交
+  if (req.method === 'POST' && url.pathname === '/api/contact-messages') {
+    try {
+      const rawBody = await readRequestBody(req);
+      const parsedBody = JSON.parse(rawBody || '{}');
+      const validation = validateContactPayload(parsedBody);
+
+      if (!validation.valid) {
+        sendJson(res, 400, { message: validation.message });
+        return;
+      }
+
+      const messageRecord = {
+        id: contactMessages.length + 1,
+        ...validation.payload,
+        createdAt: new Date().toISOString(),
+      };
+
+      contactMessages.push(messageRecord);
+      sendJson(res, 201, { message: '提交成功', id: messageRecord.id });
+      return;
+    } catch (error) {
+      if (error.message === 'PAYLOAD_TOO_LARGE') {
+        sendJson(res, 413, { message: '请求体过大' });
+        return;
+      }
+
+      sendJson(res, 400, { message: '请求数据格式错误' });
+      return;
+    }
   }
 
   if (req.method === 'GET') {
