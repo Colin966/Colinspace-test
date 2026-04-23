@@ -1,9 +1,13 @@
-# 简洁静态网站（Phase 10：新增最小健康检查能力）
+# 简洁静态网站（Phase 11：新增最小请求日志能力）
 
-这是一个轻量级个人网站示例。当前阶段在原有 Projects 管理页基础上，新增了最小健康检查能力：可通过接口和管理页查看服务与数据库状态。
+这是一个轻量级个人网站示例。当前阶段在原有功能基础上，新增了最小请求日志能力：可在控制台查看关键请求的基础日志，便于本地排查问题。
 
 ## 本阶段完成内容
 
+- 为关键请求增加最小日志记录（控制台输出）
+- 日志包含：请求时间、请求方法、请求路径、响应状态码、处理耗时
+- 发生异常时增加错误日志，记录错误类型与简要错误信息
+- 日志不记录敏感信息（如完整口令、留言全文、请求体明细）
 - 保持 `GET /api/projects` 不变
 - 保持首页 `GET /api/site-settings` 读取逻辑不变
 - 新增 `GET /api/health` 健康检查接口，返回：
@@ -63,6 +67,18 @@ npm start
 
 ```text
 Server running at http://localhost:3000
+```
+
+服务收到请求后，还会输出类似如下日志：
+
+```text
+[2026-04-23T12:00:00.000Z] GET /api/projects -> 200 (3.2ms)
+```
+
+发生异常时，会额外输出错误日志（示例）：
+
+```text
+[2026-04-23T12:01:00.000Z] POST /api/contact-messages ERROR SyntaxError: Unexpected token ...
 ```
 
 ## 最小发布方案（iPad 场景）
@@ -234,6 +250,38 @@ curl http://localhost:3000/api/health
   "serverTime": "2026-04-23T12:00:00.000Z"
 }
 ```
+
+## 如何查看与验证日志（本阶段新增）
+
+1. 启动服务：
+
+```bash
+npm start
+```
+
+2. 使用浏览器或 curl 访问任意接口，例如：
+
+```bash
+curl http://localhost:3000/api/projects
+curl http://localhost:3000/api/health
+```
+
+3. 回到启动服务的终端，确认出现日志行，且包含以下字段：
+   - 请求时间（ISO 时间）
+   - 请求方法（GET / POST / PUT / DELETE）
+   - 请求路径（如 `/api/projects`）
+   - 响应状态码（如 `200` / `404` / `500`）
+   - 处理耗时（如 `2.8ms`）
+
+4. 可手动触发一个错误场景验证错误日志（例如发送非法 JSON）：
+
+```bash
+curl -X POST http://localhost:3000/api/contact-messages \
+  -H "Content-Type: application/json" \
+  -d "{bad json}"
+```
+
+5. 终端应看到包含 `ERROR` 的日志，日志中仅有错误类型与简要信息，不包含完整敏感内容。
 
 ## 如何测试留言查看功能
 

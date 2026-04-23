@@ -29,6 +29,24 @@ const MIME_TYPES = {
   '.json': 'application/json; charset=utf-8',
 };
 
+// 统一输出请求日志：只记录最小诊断信息，避免输出请求体等敏感数据
+function logRequestSummary({ requestTime, method, pathname, statusCode, durationMs }) {
+  // eslint-disable-next-line no-console
+  console.log(
+    `[${requestTime}] ${method} ${pathname} -> ${statusCode} (${durationMs.toFixed(1)}ms)`
+  );
+}
+
+// 错误日志：仅记录错误类型和简要信息，不记录口令、留言全文等敏感字段
+function logRequestError({ requestTime, method, pathname, error }) {
+  const errorType = error && error.name ? error.name : 'UnknownError';
+  const rawMessage = error && error.message ? String(error.message) : '未知错误';
+  const briefMessage = rawMessage.slice(0, 120);
+
+  // eslint-disable-next-line no-console
+  console.error(`[${requestTime}] ${method} ${pathname} ERROR ${errorType}: ${briefMessage}`);
+}
+
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     'Content-Type': MIME_TYPES['.json'],
@@ -221,6 +239,42 @@ function serveStaticFile(reqPath, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const requestStartTime = process.hrtime.bigint();
+  const requestTimeText = new Date().toISOString();
+  let responseStatusCode = 200;
+  let requestFinished = false;
+  const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+  const originalWriteHead = res.writeHead.bind(res);
+
+  // 拦截 writeHead，用于记录最终状态码
+  res.writeHead = function patchedWriteHead(statusCode, ...restArgs) {
+    if (typeof statusCode === 'number') {
+      responseStatusCode = statusCode;
+    }
+
+    return originalWriteHead(statusCode, ...restArgs);
+  };
+
+  // 在响应结束或连接关闭时输出一条日志，避免重复打印
+  function flushRequestLog() {
+    if (requestFinished) {
+      return;
+    }
+    requestFinished = true;
+
+    const durationMs = Number(process.hrtime.bigint() - requestStartTime) / 1_000_000;
+    logRequestSummary({
+      requestTime: requestTimeText,
+      method: req.method || 'UNKNOWN',
+      pathname,
+      statusCode: responseStatusCode,
+      durationMs,
+    });
+  }
+
+  res.on('finish', flushRequestLog);
+  res.on('close', flushRequestLog);
+
   const url = new URL(req.url, `http://${req.headers.host}`);
   const isApiRequest = url.pathname.startsWith('/api/');
 
@@ -496,6 +550,13 @@ const server = http.createServer(async (req, res) => {
     sendPageError(res, 404, '页面不存在', '你访问的页面未找到，请检查地址是否正确。');
     return;
   } catch (error) {
+    logRequestError({
+      requestTime: requestTimeText,
+      method: req.method || 'UNKNOWN',
+      pathname: url.pathname,
+      error,
+    });
+
     if (isApiRequest) {
       sendApiError(res, 500, 'INTERNAL_SERVER_ERROR', '服务出现异常，请稍后重试');
       return;
