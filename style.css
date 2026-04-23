@@ -327,6 +327,33 @@ body.dark-mode .contact-feedback.error {
   color: var(--muted);
 }
 
+.admin-auth-status {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.admin-auth-status.success {
+  color: #0f766e;
+}
+
+.admin-auth-status.error {
+  color: #b91c1c;
+}
+
+body.dark-mode .admin-auth-status.success {
+  color: #34d399;
+}
+
+body.dark-mode .admin-auth-status.error {
+  color: #fca5a5;
+}
+
+.admin-auth-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .admin-feedback.success {
   color: #0f766e;
 }
@@ -362,6 +389,13 @@ body.dark-mode .admin-feedback.error {
   border: 1px solid var(--border);
   font: inherit;
   cursor: pointer;
+}
+
+.admin-primary:disabled,
+.admin-secondary:disabled,
+.admin-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .admin-primary {

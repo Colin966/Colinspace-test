@@ -46,6 +46,33 @@ npm start
 Server running at http://localhost:3000
 ```
 
+## Projects 管理口令保护（最小实现）
+
+本项目为 `/admin.html` 增加了一个**最小口令保护**：
+
+- 进入管理页后，默认是“仅可查看”状态
+- 未通过口令验证时，不能新增、编辑、删除
+- 通过验证后，才允许调用写接口（`POST / PUT / DELETE /api/projects`）
+- 不引入复杂登录系统，仅使用一个管理口令
+
+### 如何配置口令
+
+服务端通过环境变量 `ADMIN_PASSWORD` 读取口令。
+
+> 如果不设置，默认值是 `change-me`（建议你在本地开发时改成自己的值）。
+
+示例（macOS / Linux）：
+
+```bash
+ADMIN_PASSWORD=your-password npm start
+```
+
+示例（Windows PowerShell）：
+
+```powershell
+$env:ADMIN_PASSWORD="your-password"; npm start
+```
+
 ## 如何进入管理页
 
 1. 先启动项目：`npm start`
@@ -63,6 +90,16 @@ http://localhost:3000/admin.html
 4. **删除项目**：点击某条项目的“删除”，确认后应看到“项目删除成功”。
 5. **失败提示测试**：新增时将“项目标题”留空并提交，页面会显示中文错误提示。
 
+## 如何测试口令保护
+
+1. 启动服务时设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
+2. 打开 `http://localhost:3000/admin.html`
+3. 不输入口令时，页面应显示“当前状态：未验证（仅可查看）”，且新增/编辑/删除不可用
+4. 输入错误口令，页面应显示“管理口令错误”
+5. 输入正确口令（如 `abc123`）后，应显示“口令验证成功，现在可以管理项目”
+6. 此时可继续测试新增、编辑、删除是否正常
+7. 点击“退出验证”后，应回到“仅可查看”状态
+
 ## 可选：用 curl 验证接口
 
 ### 1) 查询项目列表
@@ -76,6 +113,7 @@ curl http://localhost:3000/api/projects
 ```bash
 curl -X POST http://localhost:3000/api/projects \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Password: abc123" \
   -d '{
     "title":"新的演示项目",
     "description":"这是一个用于演示新增接口的项目。",
@@ -88,6 +126,7 @@ curl -X POST http://localhost:3000/api/projects \
 ```bash
 curl -X PUT http://localhost:3000/api/projects/4 \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Password: abc123" \
   -d '{
     "title":"新的演示项目（已更新）",
     "description":"这是更新后的描述。",
@@ -98,5 +137,6 @@ curl -X PUT http://localhost:3000/api/projects/4 \
 ### 4) 删除项目
 
 ```bash
-curl -X DELETE http://localhost:3000/api/projects/4
+curl -X DELETE http://localhost:3000/api/projects/4 \
+  -H "X-Admin-Password: abc123"
 ```
