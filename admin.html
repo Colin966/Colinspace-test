@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Projects 管理页</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="container admin-page" aria-label="项目管理页面">
+      <header class="admin-header">
+        <h1>Projects 管理</h1>
+        <p>用于查看、新增、编辑、删除项目。</p>
+      </header>
+
+      <p id="admin-feedback" class="admin-feedback" aria-live="polite"></p>
+
+      <section class="admin-card" aria-label="新增或编辑项目">
+        <h2 id="form-title">新增项目</h2>
+        <form id="project-form" class="admin-form" novalidate>
+          <input id="project-id" type="hidden" />
+
+          <label class="form-field" for="project-title">
+            <span>项目标题（必填）</span>
+            <input id="project-title" type="text" maxlength="100" required />
+          </label>
+
+          <label class="form-field" for="project-description">
+            <span>项目描述</span>
+            <textarea id="project-description" rows="4" maxlength="500"></textarea>
+          </label>
+
+          <label class="form-field" for="project-link">
+            <span>项目链接（可选）</span>
+            <input id="project-link" type="url" placeholder="https://example.com" />
+          </label>
+
+          <div class="admin-form-actions">
+            <button id="save-button" class="admin-primary" type="submit">保存</button>
+            <button id="cancel-button" class="admin-secondary" type="button">取消编辑</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-card" aria-label="项目列表">
+        <h2>当前项目列表</h2>
+        <p id="admin-loading" class="projects-status">项目加载中...</p>
+        <div id="projects-list" class="admin-list"></div>
+      </section>
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

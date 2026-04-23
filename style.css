@@ -296,3 +296,141 @@ body.dark-mode .contact-feedback.error {
     align-items: flex-start;
   }
 }
+
+/* ===== Admin page ===== */
+.admin-page {
+  padding: 1.4rem 0 2rem;
+}
+
+.admin-header h1 {
+  margin-bottom: 0.2rem;
+}
+
+.admin-header p {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-feedback {
+  min-height: 1.3rem;
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.admin-feedback.success {
+  color: #0f766e;
+}
+
+.admin-feedback.error {
+  color: #b91c1c;
+}
+
+body.dark-mode .admin-feedback.success {
+  color: #34d399;
+}
+
+body.dark-mode .admin-feedback.error {
+  color: #fca5a5;
+}
+
+.admin-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-primary,
+.admin-secondary,
+.admin-danger {
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.admin-secondary {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.admin-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+body.dark-mode .admin-danger {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+}
+
+.admin-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.admin-item-content h3 {
+  margin: 0;
+}
+
+.admin-item-content p {
+  margin: 0.35rem 0;
+  color: var(--muted);
+}
+
+.admin-item-content a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.admin-empty-link {
+  font-size: 0.92rem;
+}
+
+.admin-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 860px) {
+  .admin-item {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .admin-item-actions {
+    justify-content: flex-end;
+  }
+}
