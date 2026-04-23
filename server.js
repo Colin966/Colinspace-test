@@ -4,6 +4,7 @@ const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 
+// Phase 1 先使用 mock 数据，后续可替换为数据库查询
 const mockProjects = [
   {
     id: 1,
@@ -67,6 +68,7 @@ function serveStaticFile(reqPath, res) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  // Projects 接口：返回 mock 数据
   if (req.method === 'GET' && url.pathname === '/api/projects') {
     sendJson(res, 200, { projects: mockProjects });
     return;
