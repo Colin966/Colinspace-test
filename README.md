@@ -1,37 +1,49 @@
-# 简洁静态网站（Phase 2：Contact 表单化）
+# 简洁静态网站（Phase 3：Projects 接入数据库）
 
-这是一个轻量级个人网站示例。第 2 阶段新增了 Contact 联系表单与提交接口，保留现有页面布局和视觉风格。
+这是一个轻量级个人网站示例。第 3 阶段将 Projects 从 mock 数据切换为 SQLite 数据库读取，前端项目列表渲染逻辑保持不变。
 
 ## 本阶段完成内容
 
-- 新增最小后端服务（Node.js 原生 `http`）
-- 提供 `GET /api/projects` 接口
-- 新增 `POST /api/contact-messages` 接口
-- Contact 区改为 `name`、`email`、`message` 表单
-- 前后端都加入基础校验（必填、邮箱格式、留言长度限制）
-- 首页通过接口加载项目卡片
-- 表单提交后显示中文成功/失败提示
-- 保持原有深色模式与页面布局不变
+- 新增 SQLite 数据库读写模块（使用 Node.js 内置 `node:sqlite`）
+- 建立 `projects` 数据表
+- `GET /api/projects` 改为从数据库查询并返回
+- 保留前端 `loadProjects -> renderProjects` 的原有逻辑
+- 提供最少量初始化项目数据，保证页面可直接显示
+- 保留 `POST /api/contact-messages` 既有功能
 
 ## 文件说明
 
-- `index.html`：页面结构（Contact 区改为表单）
-- `style.css`：样式（在不破坏原布局前提下新增表单样式）
-- `script.js`：前端交互、项目接口请求、表单校验与提交逻辑
-- `server.js`：本地 HTTP 服务，包含 `GET /api/projects` 与 `POST /api/contact-messages`
+- `server.js`：HTTP 服务，`GET /api/projects` 已改为读数据库
+- `db.js`：数据库初始化、建表、查询项目数据
+- `scripts/init-db.js`：手动初始化数据库脚本
+- `script.js`：前端项目加载与渲染逻辑（无需改动）
+- `.gitignore`：忽略本地数据库文件
+- `package.json`：提供 `start` 与 `db:init` 命令
 
-## 运行方式
+## 环境要求
 
-### 1) 环境要求
+- Node.js 22+（需支持内置 `node:sqlite`）
 
-- Node.js 18+（建议）
-
-### 2) 启动项目
+## 如何初始化数据库
 
 在项目根目录执行：
 
 ```bash
-node server.js
+npm run db:init
+```
+
+预期输出类似：
+
+```text
+数据库初始化完成：/workspace/Colinspace-test/db/portfolio.sqlite
+```
+
+> 说明：`server.js` 启动时也会自动调用初始化逻辑；手动执行 `db:init` 适合首次安装后显式准备数据。
+
+## 如何运行项目
+
+```bash
+npm start
 ```
 
 看到以下日志表示启动成功：
@@ -40,25 +52,23 @@ node server.js
 Server running at http://localhost:3000
 ```
 
-### 3) 访问页面
-
 浏览器打开：
 
 ```text
 http://localhost:3000
 ```
 
-## 测试步骤
+## 接口测试
 
-### A. 项目接口测试
+### 1) 测试项目列表接口（数据库读取）
 
 ```bash
 curl http://localhost:3000/api/projects
 ```
 
-预期：返回 JSON，且包含 `projects` 数组。
+预期：返回 JSON，且包含 `projects` 数组（来自数据库）。
 
-### B. 联系表单接口测试（成功）
+### 2) 测试联系表单接口（成功）
 
 ```bash
 curl -X POST http://localhost:3000/api/contact-messages \
@@ -68,7 +78,7 @@ curl -X POST http://localhost:3000/api/contact-messages \
 
 预期：返回 `201`，并包含 `message: "提交成功"` 与 `id`。
 
-### C. 联系表单接口测试（失败）
+### 3) 测试联系表单接口（失败）
 
 ```bash
 curl -X POST http://localhost:3000/api/contact-messages \
@@ -77,21 +87,3 @@ curl -X POST http://localhost:3000/api/contact-messages \
 ```
 
 预期：返回 `400`，并包含中文错误信息。
-
-### D. 页面功能测试
-
-1. 打开首页后，Projects 区域先显示“项目加载中...”。
-2. 请求成功后，显示项目卡片列表。
-3. 在 Contact 表单填写 `name`、`email`、`message` 并提交：
-   - 合法输入：显示“提交成功，感谢你的留言！”
-   - 非法输入：显示对应中文失败提示
-4. 打开浏览器开发者工具的 Network 面板，确认：
-   - `GET /api/projects` 状态为 `200`
-   - `POST /api/contact-messages` 状态为 `201`（成功）或 `400`（校验失败）
-
-### E. 失败兜底测试（可选）
-
-1. 先停止 `node server.js`。
-2. 刷新页面。
-3. Projects 区域应显示中文提示：“项目加载失败，请稍后重试。”
-4. 提交 Contact 表单时应显示中文提示：“提交失败，请稍后重试。”
