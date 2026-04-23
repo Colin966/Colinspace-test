@@ -37,6 +37,49 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
+// API 错误统一返回结构：兼容旧的 message 字段，便于前端渐进升级
+function sendApiError(res, statusCode, code, message) {
+  sendJson(res, statusCode, {
+    success: false,
+    error: {
+      code,
+      message,
+    },
+    message,
+  });
+}
+
+// 页面错误统一返回友好中文文案，避免暴露内部异常细节
+function sendPageError(res, statusCode, title, description) {
+  res.writeHead(statusCode, {
+    'Content-Type': MIME_TYPES['.html'],
+    'Cache-Control': 'no-store',
+  });
+
+  res.end(`<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f8fafc; color: #1f2937; }
+    .container { max-width: 680px; margin: 60px auto; background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+    h1 { margin: 0 0 12px; font-size: 24px; }
+    p { margin: 0; line-height: 1.7; }
+    a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>${title}</h1>
+    <p>${description}</p>
+    <p style="margin-top: 12px;"><a href="/">返回首页</a></p>
+  </main>
+</body>
+</html>`);
+}
+
 // 统一读取 POST Body，避免每个接口重复写监听逻辑
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -150,15 +193,23 @@ function serveStaticFile(reqPath, res) {
   const resolvedPath = path.join(__dirname, filePath);
 
   if (!resolvedPath.startsWith(__dirname)) {
-    res.writeHead(403);
-    res.end('Forbidden');
+    sendPageError(res, 403, '无权限访问该页面', '请求的页面路径不被允许。');
     return;
   }
 
   fs.readFile(resolvedPath, (err, content) => {
     if (err) {
-      res.writeHead(404);
-      res.end('Not Found');
+      if (err.code === 'ENOENT') {
+        sendPageError(res, 404, '页面不存在', '你访问的页面未找到，请检查地址是否正确。');
+        return;
+      }
+
+      sendPageError(
+        res,
+        500,
+        '页面暂时不可用',
+        '服务器处理页面请求时出现异常，请稍后刷新重试。'
+      );
       return;
     }
 
@@ -171,28 +222,27 @@ function serveStaticFile(reqPath, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  const isApiRequest = url.pathname.startsWith('/api/');
 
-  // Health 接口：给运维或管理页提供最小可观测信息
-  if (req.method === 'GET' && url.pathname === '/api/health') {
-    const databaseHealth = checkDatabaseHealth();
-    const payload = {
-      serviceStatus: 'ok',
-      databaseStatus: databaseHealth.ok ? 'ok' : 'error',
-      databaseFilePath: DB_PATH,
-      serverTime: new Date().toISOString(),
-    };
+  try {
+    // Health 接口：给运维或管理页提供最小可观测信息
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      const databaseHealth = checkDatabaseHealth();
+      const payload = {
+        serviceStatus: 'ok',
+        databaseStatus: databaseHealth.ok ? 'ok' : 'error',
+        databaseFilePath: DB_PATH,
+        serverTime: new Date().toISOString(),
+      };
 
-    if (!databaseHealth.ok) {
-      sendJson(res, 503, {
-        ...payload,
-        message: databaseHealth.message || '数据库不可用',
-      });
+      if (!databaseHealth.ok) {
+        sendApiError(res, 503, 'DATABASE_UNAVAILABLE', databaseHealth.message || '数据库不可用');
+        return;
+      }
+
+      sendJson(res, 200, payload);
       return;
     }
-
-    sendJson(res, 200, payload);
-    return;
-  }
 
   // Site Settings 接口：返回首页最小配置
   if (req.method === 'GET' && url.pathname === '/api/site-settings') {
@@ -200,7 +250,7 @@ const server = http.createServer(async (req, res) => {
       const siteSettings = getSiteSettings();
       sendJson(res, 200, { siteSettings });
     } catch (error) {
-      sendJson(res, 500, { message: '站点配置读取失败' });
+      sendApiError(res, 500, 'SITE_SETTINGS_READ_FAILED', '站点配置读取失败');
     }
 
     return;
@@ -208,7 +258,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'PUT' && url.pathname === '/api/site-settings') {
     if (!isAdminAuthorized(req)) {
-      sendJson(res, 401, { message: '未通过管理口令验证，不能修改网站配置' });
+      sendApiError(res, 401, 'UNAUTHORIZED', '未通过管理口令验证，不能修改网站配置');
       return;
     }
 
@@ -218,7 +268,7 @@ const server = http.createServer(async (req, res) => {
       const validation = validateSiteSettingsPayload(parsedBody);
 
       if (!validation.valid) {
-        sendJson(res, 400, { message: validation.message });
+        sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
         return;
       }
 
@@ -227,15 +277,15 @@ const server = http.createServer(async (req, res) => {
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendJson(res, 413, { message: '请求体过大' });
+        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
         return;
       }
       if (error instanceof SyntaxError) {
-        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
         return;
       }
 
-      sendJson(res, 500, { message: '网站配置修改失败，请稍后重试' });
+      sendApiError(res, 500, 'SITE_SETTINGS_UPDATE_FAILED', '网站配置修改失败，请稍后重试');
       return;
     }
   }
@@ -246,7 +296,7 @@ const server = http.createServer(async (req, res) => {
       const projects = getProjects();
       sendJson(res, 200, { projects });
     } catch (error) {
-      sendJson(res, 500, { message: '项目数据读取失败' });
+      sendApiError(res, 500, 'PROJECTS_READ_FAILED', '项目数据读取失败');
     }
 
     return;
@@ -260,12 +310,12 @@ const server = http.createServer(async (req, res) => {
       const password = typeof parsedBody.password === 'string' ? parsedBody.password.trim() : '';
 
       if (!password) {
-        sendJson(res, 400, { message: '请输入管理口令' });
+        sendApiError(res, 400, 'PASSWORD_REQUIRED', '请输入管理口令');
         return;
       }
 
       if (password !== ADMIN_PASSWORD) {
-        sendJson(res, 401, { message: '管理口令错误' });
+        sendApiError(res, 401, 'INVALID_PASSWORD', '管理口令错误');
         return;
       }
 
@@ -273,22 +323,22 @@ const server = http.createServer(async (req, res) => {
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendJson(res, 413, { message: '请求体过大' });
+        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
         return;
       }
       if (error instanceof SyntaxError) {
-        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
         return;
       }
 
-      sendJson(res, 500, { message: '口令校验失败，请稍后重试' });
+      sendApiError(res, 500, 'ADMIN_VERIFY_FAILED', '口令校验失败，请稍后重试');
       return;
     }
   }
 
   if (req.method === 'POST' && url.pathname === '/api/projects') {
     if (!isAdminAuthorized(req)) {
-      sendJson(res, 401, { message: '未通过管理口令验证，不能新增项目' });
+      sendApiError(res, 401, 'UNAUTHORIZED', '未通过管理口令验证，不能新增项目');
       return;
     }
 
@@ -298,7 +348,7 @@ const server = http.createServer(async (req, res) => {
       const validation = validateProjectPayload(parsedBody);
 
       if (!validation.valid) {
-        sendJson(res, 400, { message: validation.message });
+        sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
         return;
       }
 
@@ -307,15 +357,15 @@ const server = http.createServer(async (req, res) => {
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendJson(res, 413, { message: '请求体过大' });
+        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
         return;
       }
       if (error instanceof SyntaxError) {
-        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
         return;
       }
 
-      sendJson(res, 500, { message: '项目新增失败，请稍后重试' });
+      sendApiError(res, 500, 'PROJECT_CREATE_FAILED', '项目新增失败，请稍后重试');
       return;
     }
   }
@@ -326,13 +376,13 @@ const server = http.createServer(async (req, res) => {
   ) {
     if (!isAdminAuthorized(req)) {
       const actionText = req.method === 'DELETE' ? '删除' : '修改';
-      sendJson(res, 401, { message: `未通过管理口令验证，不能${actionText}项目` });
+      sendApiError(res, 401, 'UNAUTHORIZED', `未通过管理口令验证，不能${actionText}项目`);
       return;
     }
 
     const projectId = Number(url.pathname.split('/').pop());
     if (!Number.isInteger(projectId) || projectId <= 0) {
-      sendJson(res, 400, { message: '项目 id 不合法' });
+      sendApiError(res, 400, 'INVALID_PROJECT_ID', '项目 id 不合法');
       return;
     }
 
@@ -340,14 +390,14 @@ const server = http.createServer(async (req, res) => {
       try {
         const deletedCount = deleteProjectById(projectId);
         if (deletedCount === 0) {
-          sendJson(res, 404, { message: '未找到要删除的项目' });
+          sendApiError(res, 404, 'PROJECT_NOT_FOUND', '未找到要删除的项目');
           return;
         }
 
         sendJson(res, 200, { message: '项目删除成功' });
         return;
       } catch (error) {
-        sendJson(res, 500, { message: '项目删除失败，请稍后重试' });
+        sendApiError(res, 500, 'PROJECT_DELETE_FAILED', '项目删除失败，请稍后重试');
         return;
       }
     }
@@ -358,13 +408,13 @@ const server = http.createServer(async (req, res) => {
       const validation = validateProjectPayload(parsedBody);
 
       if (!validation.valid) {
-        sendJson(res, 400, { message: validation.message });
+        sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
         return;
       }
 
       const updatedCount = updateProjectById(projectId, validation.payload);
       if (updatedCount === 0) {
-        sendJson(res, 404, { message: '未找到要修改的项目' });
+        sendApiError(res, 404, 'PROJECT_NOT_FOUND', '未找到要修改的项目');
         return;
       }
 
@@ -372,15 +422,15 @@ const server = http.createServer(async (req, res) => {
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendJson(res, 413, { message: '请求体过大' });
+        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
         return;
       }
       if (error instanceof SyntaxError) {
-        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
         return;
       }
 
-      sendJson(res, 500, { message: '项目修改失败，请稍后重试' });
+      sendApiError(res, 500, 'PROJECT_UPDATE_FAILED', '项目修改失败，请稍后重试');
       return;
     }
   }
@@ -393,7 +443,7 @@ const server = http.createServer(async (req, res) => {
       const validation = validateContactPayload(parsedBody);
 
       if (!validation.valid) {
-        sendJson(res, 400, { message: validation.message });
+        sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
         return;
       }
 
@@ -403,15 +453,15 @@ const server = http.createServer(async (req, res) => {
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendJson(res, 413, { message: '请求体过大' });
+        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
         return;
       }
       if (error instanceof SyntaxError) {
-        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
         return;
       }
 
-      sendJson(res, 500, { message: '留言保存失败，请稍后重试' });
+      sendApiError(res, 500, 'CONTACT_MESSAGE_CREATE_FAILED', '留言保存失败，请稍后重试');
       return;
     }
   }
@@ -419,7 +469,7 @@ const server = http.createServer(async (req, res) => {
   // Contact 留言列表接口：仅管理口令验证通过后可查看
   if (req.method === 'GET' && url.pathname === '/api/contact-messages') {
     if (!isAdminAuthorized(req)) {
-      sendJson(res, 401, { message: '未通过管理口令验证，不能查看留言列表' });
+      sendApiError(res, 401, 'UNAUTHORIZED', '未通过管理口令验证，不能查看留言列表');
       return;
     }
 
@@ -428,18 +478,32 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { messages });
       return;
     } catch (error) {
-      sendJson(res, 500, { message: '留言列表读取失败，请稍后重试' });
+      sendApiError(res, 500, 'CONTACT_MESSAGES_READ_FAILED', '留言列表读取失败，请稍后重试');
       return;
     }
   }
 
-  if (req.method === 'GET') {
-    serveStaticFile(url.pathname, res);
+    if (isApiRequest) {
+      sendApiError(res, 404, 'API_NOT_FOUND', `未找到接口：${req.method} ${url.pathname}`);
+      return;
+    }
+
+    if (req.method === 'GET') {
+      serveStaticFile(url.pathname, res);
+      return;
+    }
+
+    sendPageError(res, 404, '页面不存在', '你访问的页面未找到，请检查地址是否正确。');
+    return;
+  } catch (error) {
+    if (isApiRequest) {
+      sendApiError(res, 500, 'INTERNAL_SERVER_ERROR', '服务出现异常，请稍后重试');
+      return;
+    }
+
+    sendPageError(res, 500, '页面暂时不可用', '服务器处理请求时出现异常，请稍后重试。');
     return;
   }
-
-  res.writeHead(405);
-  res.end('Method Not Allowed');
 });
 
 // 启动前确保数据库和基础表已准备好
