@@ -12,6 +12,7 @@ const {
 } = require('./db');
 
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'change-me';
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_PROJECT_DESCRIPTION_LENGTH = 500;
@@ -102,6 +103,11 @@ function validateProjectPayload(payload) {
   };
 }
 
+function isAdminAuthorized(req) {
+  const providedPassword = req.headers['x-admin-password'];
+  return typeof providedPassword === 'string' && providedPassword === ADMIN_PASSWORD;
+}
+
 function serveStaticFile(reqPath, res) {
   const filePath = reqPath === '/' ? '/index.html' : reqPath;
   const resolvedPath = path.join(__dirname, filePath);
@@ -153,7 +159,46 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 管理口令校验接口：前端用于确认口令是否正确
+  if (req.method === 'POST' && url.pathname === '/api/admin/verify') {
+    try {
+      const rawBody = await readRequestBody(req);
+      const parsedBody = JSON.parse(rawBody || '{}');
+      const password = typeof parsedBody.password === 'string' ? parsedBody.password.trim() : '';
+
+      if (!password) {
+        sendJson(res, 400, { message: '请输入管理口令' });
+        return;
+      }
+
+      if (password !== ADMIN_PASSWORD) {
+        sendJson(res, 401, { message: '管理口令错误' });
+        return;
+      }
+
+      sendJson(res, 200, { message: '口令验证通过' });
+      return;
+    } catch (error) {
+      if (error.message === 'PAYLOAD_TOO_LARGE') {
+        sendJson(res, 413, { message: '请求体过大' });
+        return;
+      }
+      if (error instanceof SyntaxError) {
+        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        return;
+      }
+
+      sendJson(res, 500, { message: '口令校验失败，请稍后重试' });
+      return;
+    }
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/projects') {
+    if (!isAdminAuthorized(req)) {
+      sendJson(res, 401, { message: '未通过管理口令验证，不能新增项目' });
+      return;
+    }
+
     try {
       const rawBody = await readRequestBody(req);
       const parsedBody = JSON.parse(rawBody || '{}');
@@ -186,6 +231,12 @@ const server = http.createServer(async (req, res) => {
     (req.method === 'PUT' || req.method === 'DELETE') &&
     /^\/api\/projects\/\d+$/.test(url.pathname)
   ) {
+    if (!isAdminAuthorized(req)) {
+      const actionText = req.method === 'DELETE' ? '删除' : '修改';
+      sendJson(res, 401, { message: `未通过管理口令验证，不能${actionText}项目` });
+      return;
+    }
+
     const projectId = Number(url.pathname.split('/').pop());
     if (!Number.isInteger(projectId) || projectId <= 0) {
       sendJson(res, 400, { message: '项目 id 不合法' });
