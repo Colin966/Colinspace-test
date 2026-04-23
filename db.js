@@ -24,6 +24,21 @@ const initialProjects = [
   },
 ];
 
+// 站点配置默认值：当数据库缺少配置或接口失败时都可复用
+const DEFAULT_SITE_SETTINGS = {
+  heroEyebrow: '产品设计与前端实践',
+  heroTitle: '用清晰的体验，把复杂问题做简单',
+  heroDescription:
+    '我专注于构建高质量网页与产品原型，强调可读性、响应速度与可维护性，让每一次迭代都更高效。',
+  heroButtonText: '开始了解',
+  heroMessage: '欢迎来到我的作品集，向下查看项目案例。',
+  contactTitle: '联系',
+  contactDescription:
+    '如果你有合作想法、项目需求或交流计划，欢迎随时发来消息，我会尽快回复。',
+  contactEmail: 'hello@example.com',
+  contactEmailLabel: 'hello@example.com',
+};
+
 function ensureDbDirectory() {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
@@ -56,10 +71,18 @@ function initializeDatabase() {
     )
   `);
 
-  const countRow = db.prepare('SELECT COUNT(*) AS count FROM projects').get();
+  // 建表：网站最小配置，采用 key-value 结构便于后续扩展
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+
+  const projectCountRow = db.prepare('SELECT COUNT(*) AS count FROM projects').get();
 
   // 首次初始化时写入最少量示例数据，保证前端可展示
-  if (countRow.count === 0) {
+  if (projectCountRow.count === 0) {
     const insertStatement = db.prepare(
       'INSERT INTO projects (title, description) VALUES (?, ?)'
     );
@@ -67,6 +90,14 @@ function initializeDatabase() {
     for (const project of initialProjects) {
       insertStatement.run(project.title, project.description);
     }
+  }
+
+  // 首次初始化时写入站点默认配置，若已存在则不覆盖
+  const insertSiteSetting = db.prepare(
+    'INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)'
+  );
+  for (const [key, value] of Object.entries(DEFAULT_SITE_SETTINGS)) {
+    insertSiteSetting.run(key, value);
   }
 
   db.close();
@@ -86,6 +117,28 @@ function getProjects() {
   return rows;
 }
 
+function getSiteSettings() {
+  const db = openDatabase();
+  const rows = db
+    .prepare(
+      `SELECT key, value
+       FROM site_settings`
+    )
+    .all();
+  db.close();
+
+  const settings = { ...DEFAULT_SITE_SETTINGS };
+
+  for (const row of rows) {
+    // 只合并字符串类型，避免异常值影响页面
+    if (typeof row.key === 'string' && typeof row.value === 'string' && row.key in settings) {
+      settings[row.key] = row.value;
+    }
+  }
+
+  return settings;
+}
+
 function createContactMessage(payload) {
   const db = openDatabase();
   const insertStatement = db.prepare(
@@ -102,7 +155,9 @@ function createContactMessage(payload) {
 
 module.exports = {
   DB_PATH,
+  DEFAULT_SITE_SETTINGS,
   initializeDatabase,
   getProjects,
+  getSiteSettings,
   createContactMessage,
 };

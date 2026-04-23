@@ -1,7 +1,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { initializeDatabase, getProjects, createContactMessage } = require('./db');
+const {
+  initializeDatabase,
+  getProjects,
+  getSiteSettings,
+  createContactMessage,
+} = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,6 +93,18 @@ function serveStaticFile(reqPath, res) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  // Site Settings 接口：返回首页最小配置
+  if (req.method === 'GET' && url.pathname === '/api/site-settings') {
+    try {
+      const siteSettings = getSiteSettings();
+      sendJson(res, 200, { siteSettings });
+    } catch (error) {
+      sendJson(res, 500, { message: '站点配置读取失败' });
+    }
+
+    return;
+  }
+
   // Projects 接口：改为从数据库读取
   if (req.method === 'GET' && url.pathname === '/api/projects') {
     try {
@@ -140,7 +157,7 @@ const server = http.createServer(async (req, res) => {
   res.end('Method Not Allowed');
 });
 
-// 启动前确保数据库和 projects 表已准备好
+// 启动前确保数据库和基础表已准备好
 initializeDatabase();
 
 server.listen(PORT, () => {

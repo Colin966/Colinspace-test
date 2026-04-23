@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "db:init": "node scripts/init-db.js",
-    "check:projects": "node scripts/projects-self-check.js"
+    "check:projects": "node scripts/projects-self-check.js",
+    "check:site-settings": "node scripts/site-settings-self-check.js"
   }
 }
