@@ -9,18 +9,23 @@ button.addEventListener('click', () => {
   message.textContent = '欢迎来到我的作品集，向下查看项目案例。';
 });
 
-function renderProjects(projects) {
-  const cardsMarkup = projects
-    .map(
-      (project) => `
-        <article class="project-card">
-          <h2>${project.title}</h2>
-          <p>${project.description}</p>
-        </article>
-      `,
-    )
-    .join('');
+function createProjectCard(project) {
+  return `
+    <article class="project-card">
+      <h2>${project.title}</h2>
+      <p>${project.description}</p>
+    </article>
+  `;
+}
 
+function renderProjects(projects) {
+  if (!projects.length) {
+    // 接口成功但暂无数据时，给出中文提示
+    projectsContainer.innerHTML = '<p class="projects-status">暂时没有项目数据，请稍后再来看。</p>';
+    return;
+  }
+
+  const cardsMarkup = projects.map((project) => createProjectCard(project)).join('');
   projectsContainer.innerHTML = cardsMarkup;
 }
 
@@ -35,6 +40,7 @@ async function loadProjects() {
     const data = await response.json();
     renderProjects(data.projects || []);
   } catch (error) {
+    // 前端加载失败时兜底提示
     projectsStatus.textContent = '项目加载失败，请稍后重试。';
   }
 }
