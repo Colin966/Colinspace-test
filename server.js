@@ -243,7 +243,8 @@ const server = http.createServer(async (req, res) => {
   const requestTimeText = new Date().toISOString();
   let responseStatusCode = 200;
   let requestFinished = false;
-  const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
   const originalWriteHead = res.writeHead.bind(res);
 
   // 拦截 writeHead，用于记录最终状态码
@@ -275,7 +276,6 @@ const server = http.createServer(async (req, res) => {
   res.on('finish', flushRequestLog);
   res.on('close', flushRequestLog);
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
   const isApiRequest = url.pathname.startsWith('/api/');
 
   try {
@@ -298,51 +298,51 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-  // Site Settings 接口：返回首页最小配置
-  if (req.method === 'GET' && url.pathname === '/api/site-settings') {
-    try {
-      const siteSettings = getSiteSettings();
-      sendJson(res, 200, { siteSettings });
-    } catch (error) {
-      sendApiError(res, 500, 'SITE_SETTINGS_READ_FAILED', '站点配置读取失败');
-    }
+    // Site Settings 接口：返回首页最小配置
+    if (req.method === 'GET' && url.pathname === '/api/site-settings') {
+      try {
+        const siteSettings = getSiteSettings();
+        sendJson(res, 200, { siteSettings });
+      } catch (error) {
+        sendApiError(res, 500, 'SITE_SETTINGS_READ_FAILED', '站点配置读取失败');
+      }
 
-    return;
-  }
-
-  if (req.method === 'PUT' && url.pathname === '/api/site-settings') {
-    if (!isAdminAuthorized(req)) {
-      sendApiError(res, 401, 'UNAUTHORIZED', '未通过管理口令验证，不能修改网站配置');
       return;
     }
 
-    try {
-      const rawBody = await readRequestBody(req);
-      const parsedBody = JSON.parse(rawBody || '{}');
-      const validation = validateSiteSettingsPayload(parsedBody);
-
-      if (!validation.valid) {
-        sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
+    if (req.method === 'PUT' && url.pathname === '/api/site-settings') {
+      if (!isAdminAuthorized(req)) {
+        sendApiError(res, 401, 'UNAUTHORIZED', '未通过管理口令验证，不能修改网站配置');
         return;
       }
 
-      updateSiteSettings(validation.payload);
-      sendJson(res, 200, { message: '网站配置修改成功' });
-      return;
-    } catch (error) {
-      if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-        return;
-      }
-      if (error instanceof SyntaxError) {
-        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-        return;
-      }
+      try {
+        const rawBody = await readRequestBody(req);
+        const parsedBody = JSON.parse(rawBody || '{}');
+        const validation = validateSiteSettingsPayload(parsedBody);
 
-      sendApiError(res, 500, 'SITE_SETTINGS_UPDATE_FAILED', '网站配置修改失败，请稍后重试');
-      return;
+        if (!validation.valid) {
+          sendApiError(res, 400, 'VALIDATION_ERROR', validation.message);
+          return;
+        }
+
+        updateSiteSettings(validation.payload);
+        sendJson(res, 200, { message: '网站配置修改成功' });
+        return;
+      } catch (error) {
+        if (error.message === 'PAYLOAD_TOO_LARGE') {
+          sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
+          return;
+        }
+        if (error instanceof SyntaxError) {
+          sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
+          return;
+        }
+
+        sendApiError(res, 500, 'SITE_SETTINGS_UPDATE_FAILED', '网站配置修改失败，请稍后重试');
+        return;
+      }
     }
-  }
 
   // Projects 接口：改为从数据库读取
   if (req.method === 'GET' && url.pathname === '/api/projects') {

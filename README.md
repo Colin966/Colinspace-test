@@ -1,527 +1,193 @@
-# 简洁静态网站（Phase 11：新增最小请求日志能力）
+# Colinspace 小型全栈项目（发布前收尾版）
 
-这是一个轻量级个人网站示例。当前阶段在原有功能基础上，新增了最小请求日志能力：可在控制台查看关键请求的基础日志，便于本地排查问题。
+这是一个面向新手的轻量全栈示例：
+- 前端：原生 HTML/CSS/JS
+- 后端：Node.js 原生 `http`
+- 数据库：SQLite（`node:sqlite`）
+- 管理页：同站点内 `admin.html`
 
-## 本阶段完成内容
+本次 README 已按当前代码能力做一致性收敛，并补齐发布前与日常维护说明。
 
-- 为关键请求增加最小日志记录（控制台输出）
-- 日志包含：请求时间、请求方法、请求路径、响应状态码、处理耗时
-- 发生异常时增加错误日志，记录错误类型与简要错误信息
-- 日志不记录敏感信息（如完整口令、留言全文、请求体明细）
-- 保持 `GET /api/projects` 不变
-- 保持首页 `GET /api/site-settings` 读取逻辑不变
-- 新增 `GET /api/health` 健康检查接口，返回：
-  - 服务状态（`serviceStatus`）
-  - 数据库状态（`databaseStatus`）
-  - 数据库文件路径（`databaseFilePath`）
-  - 服务器当前时间（`serverTime`）
-- 新增 `PUT /api/site-settings`（仅管理员口令通过后可访问）
-- 管理页新增“网站配置”区域，可编辑以下字段：
-  - `heroTitle`
-  - `heroSubtitle`（服务端映射保存到 `heroDescription`，兼容现有首页读取）
-  - `heroButtonText`
-  - `contactTitle`
-  - `contactDescription`
-  - `contactEmail`
-- 新增 `GET /api/contact-messages`（仅管理员口令通过后可访问）
-- 留言按提交时间倒序返回（最近提交的在最前）
-- 使用已有接口实现管理页面 CRUD：
+---
+
+## 1. 当前功能总览（与代码一致）
+
+### 首页（`/`）
+- 展示 Hero 区文案（从 `GET /api/site-settings` 读取）
+- 展示项目列表（从 `GET /api/projects` 读取）
+- 支持联系表单提交（`POST /api/contact-messages`）
+- 支持浅色/深色模式切换（本地 `localStorage`）
+
+### 管理页（`/admin.html`）
+- 管理口令验证（`POST /api/admin/verify`）
+- 项目管理（新增/编辑/删除）
   - `POST /api/projects`
   - `PUT /api/projects/:id`
   - `DELETE /api/projects/:id`
-- 新增管理页：`/admin.html`
-- 管理页新增“网站配置”区域
-- 管理页新增“系统状态”区域，可查看服务状态、数据库状态、数据库文件路径与服务器时间
-- 管理页保留“留言列表”区域（只读）
-- 管理页适配 iPad 触控操作（按钮更大、布局更简洁）
-- 页面内新增中文成功/失败提示
-- 保持代码易读，关键逻辑添加简洁中文注释
+- 网站配置管理（`PUT /api/site-settings`）
+  - 可编辑字段：`heroTitle`、`heroSubtitle`、`heroButtonText`、`contactTitle`、`contactDescription`、`contactEmail`
+  - 服务端会将 `heroSubtitle` 映射保存为 `heroDescription`，保持首页读取逻辑不变
+- 留言只读查看（`GET /api/contact-messages`，需口令）
+- 系统状态查看（`GET /api/health`）
 
-## 文件说明
+### API 与通用能力
+- 统一 JSON 错误结构：`success=false + error.code + message`
+- 非法 JSON、超大请求体、鉴权失败等均有明确错误码与中文提示
+- 统一请求日志（最小必要信息）：时间、方法、路径、状态码、耗时
+- 异常日志不记录敏感信息（例如口令、完整留言内容）
+- 页面 404/500 采用中文友好页面
 
-- `admin.html`：Projects 管理页面结构
-- `admin.js`：管理页交互逻辑（项目管理 + 网站配置管理 + 留言查看 + 健康检查展示）
-- `style.css`：管理页样式（简洁布局 + 触控友好按钮）
-- `server.js`：API 路由与校验逻辑（含网站配置更新接口与健康检查接口）
-- `db.js`：数据持久化（含网站配置更新逻辑与数据库健康检查）
+### 数据库与运维脚本
+- 自动初始化数据库与基础表（服务启动时执行）
+- 备份：`npm run db:backup`（备份到 `backups/`）
+- 恢复：`npm run db:restore`（默认恢复最新备份）
+- 自检：
+  - `npm run check:projects`
+  - `npm run check:site-settings`
 
-## 环境要求
+---
 
-- Node.js 22+（需支持内置 `node:sqlite` 和全局 `fetch`）
+## 2. 环境要求
 
-## 如何初始化数据库
+- Node.js 22+
 
-在项目根目录执行：
+---
+
+## 3. 本地启动
 
 ```bash
 npm run db:init
-```
-
-## 如何运行项目
-
-```bash
 npm start
 ```
 
-看到以下日志表示启动成功：
+启动成功后访问：
+- 首页：`http://localhost:3000/`
+- 管理页：`http://localhost:3000/admin.html`
 
-```text
-Server running at http://localhost:3000
-```
-
-服务收到请求后，还会输出类似如下日志：
-
-```text
-[2026-04-23T12:00:00.000Z] GET /api/projects -> 200 (3.2ms)
-```
-
-发生异常时，会额外输出错误日志（示例）：
-
-```text
-[2026-04-23T12:01:00.000Z] POST /api/contact-messages ERROR SyntaxError: Unexpected token ...
-```
-
-## 最小发布方案（iPad 场景）
-
-下面给出一套保持当前技术栈不变、适合新手的最小发布思路：
-
-1. **前端文件（静态资源）**
-   - 文件包括：`index.html`、`admin.html`、`style.css`、`script.js`、`admin.js`、`projects-view.js`
-   - 这些文件由当前 Node.js 服务直接静态托管，无需单独打包。
-
-2. **后端服务（Node.js）**
-   - 后端入口是 `server.js`，负责 API 与静态文件服务。
-   - 发布时只需要安装依赖（本项目依赖极少）并运行 `npm start`。
-
-3. **SQLite 数据文件**
-   - 数据库文件路径：`db/portfolio.sqlite`。
-   - 这个文件就是核心数据，发布或迁移时要重点保留。
-
-### iPad 使用建议（最小可行）
-
-- **推荐方式**：将服务部署在一台常开设备（云主机/家用小主机）上，iPad 仅通过浏览器访问。
-- iPad 访问首页：`http://你的服务地址:3000/`
-- iPad 访问管理页：`http://你的服务地址:3000/admin.html`
-- 如果需要外网访问，请只开放必要端口，并务必设置 `ADMIN_PASSWORD`。
-
-### 最小部署步骤
-
-1. 在服务器上放置项目代码。
-2. 执行数据库初始化（首次）：
-
-```bash
-npm run db:init
-```
-
-3. 启动服务：
+如需启用自定义管理口令：
 
 ```bash
 ADMIN_PASSWORD=your-password npm start
 ```
 
-4. 使用 iPad Safari 打开管理页并验证操作。
+> 若未设置，默认口令是 `change-me`（仅用于开发环境，不建议上线使用）。
 
+---
 
-## 长期运行建议（PM2，最小自动化方案）
+## 4. API 清单（当前实现）
 
-为保持当前技术栈简单、对新手友好，推荐使用 **PM2** 管理 Node.js 进程。
+### 公开接口
+- `GET /api/projects`
+- `GET /api/site-settings`
+- `POST /api/contact-messages`
+- `GET /api/health`
 
-### 为什么选 PM2
+### 需管理口令（请求头 `X-Admin-Password`）
+- `POST /api/admin/verify`
+- `POST /api/projects`
+- `PUT /api/projects/:id`
+- `DELETE /api/projects/:id`
+- `PUT /api/site-settings`
+- `GET /api/contact-messages`
 
-- 配置少，上手快（比手写 systemd 更直观）
-- 支持进程崩溃后自动重启
-- 提供统一日志查看命令
-- 支持开机自启配置（适合长期运行）
+---
 
-### 1) 安装 PM2（服务器执行一次）
+## 5. 数据目录与备份
 
-```bash
-npm install -g pm2
-```
-
-### 2) 首次启动（长期运行）
-
-先初始化数据库（首次需要）：
-
-```bash
-npm run db:init
-```
-
-再启动 PM2 管理的服务：
-
-```bash
-ADMIN_PASSWORD=your-password npm run pm2:start
-```
-
-> 项目已提供 `ecosystem.config.js`，默认启动 `server.js`，端口默认 `3000`。
-
-### 3) 停止 / 重启 / 查看状态
-
-```bash
-# 停止服务
-npm run pm2:stop
-
-# 重启服务（更新代码后常用）
-npm run pm2:restart
-
-# 查看进程状态
-pm2 status
-```
-
-### 4) 服务崩溃后自动重启
-
-当前 `ecosystem.config.js` 已开启：
-
-- `autorestart: true`（进程异常退出自动拉起）
-- `restart_delay: 3000`（每次重启间隔 3 秒）
-- `max_restarts: 10`（短时间连续失败时限制重启次数）
-
-这意味着：如果 `server.js` 崩溃，PM2 会自动尝试拉起，无需人工干预。
-
-### 5) 如何查看日志
-
-```bash
-# 实时查看日志（推荐）
-npm run pm2:logs
-
-# 或查看最近日志快照
-pm2 logs colinspace-app --lines 200
-```
-
-另外，项目已将日志落盘到：
-
-- 标准输出：`pm2-out.log`
-- 错误输出：`pm2-error.log`
-
-### 6) 重启机器后继续自动拉起（可选但推荐）
-
-在服务器上执行一次：
-
-```bash
-pm2 startup
-npm run pm2:save
-```
-
-执行后，系统重启时会恢复 PM2 进程列表并自动启动服务。
-
-### 7) SQLite 数据文件在重启后继续可用
-
-- 当前数据库文件固定为：`db/portfolio.sqlite`
-- PM2 重启的是 Node 进程，不会清空该文件
-- 只要你不删除项目目录中的 `db/portfolio.sqlite`，历史数据会一直保留
-- 建议定期执行 `npm run db:backup` 备份
-
-> 结论：服务重启、PM2 重启、服务器重启后，都会继续使用同一个 SQLite 文件。
-
-## 数据备份与恢复（本次新增）
-
-为了避免误操作导致数据丢失，项目新增了最小脚本化备份能力。
-
-### 备份目录约定
-
-- 备份统一存放在：`backups/`
-- 单个备份文件命名示例：`portfolio-20260423-120000.sqlite`
-- 这样可以避免把备份文件散落在根目录，保持主代码目录整洁。
-
-### 一键备份
+- 主库文件：`db/portfolio.sqlite`
+- 备份目录：`backups/`
 
 ```bash
 npm run db:backup
-```
-
-执行后会把 `db/portfolio.sqlite` 复制到 `backups/`。
-
-### 一键恢复（默认恢复最新备份）
-
-```bash
 npm run db:restore
 ```
 
-执行后会自动选择 `backups/` 里最新的 `.sqlite` 文件恢复到 `db/portfolio.sqlite`。
+> 恢复会覆盖当前数据库，建议先执行一次备份再恢复。
 
-### 按指定文件恢复
+---
 
-```bash
-node scripts/db-restore.js portfolio-20260423-120000.sqlite
-```
-
-也可传入绝对路径进行恢复。
-
-### 备份/恢复注意事项
-
-- 恢复会**覆盖当前数据库**，建议先执行一次 `npm run db:backup` 再恢复。
-- 为避免文件锁冲突，建议在恢复前先停止服务。
-- 建议把 `backups/` 目录再同步到网盘/对象存储，形成异地备份。
-
-## Projects 管理口令保护（最小实现）
-
-本项目为 `/admin.html` 增加了一个**最小口令保护**：
-
-- 进入管理页后，默认是“仅可查看”状态
-- 未通过口令验证时，不能新增、编辑、删除
-- 通过验证后，才允许调用写接口（`POST / PUT / DELETE /api/projects`）
-- 不引入复杂登录系统，仅使用一个管理口令
-
-### 如何配置口令
-
-服务端通过环境变量 `ADMIN_PASSWORD` 读取口令。
-
-> 如果不设置，默认值是 `change-me`（建议你在本地开发时改成自己的值）。
-
-示例（macOS / Linux）：
-
-```bash
-ADMIN_PASSWORD=your-password npm start
-```
-
-示例（Windows PowerShell）：
-
-```powershell
-$env:ADMIN_PASSWORD="your-password"; npm start
-```
-
-## 如何进入管理页
-
-1. 先启动项目：`npm start`
-2. 浏览器访问：
+## 6. 当前项目目录说明（最终版）
 
 ```text
-http://localhost:3000/admin.html
+.
+├─ admin.html                      # 管理页结构
+├─ admin.js                        # 管理页逻辑：口令、项目CRUD、配置、留言、健康检查
+├─ index.html                      # 首页结构
+├─ script.js                       # 首页逻辑：配置读取、项目渲染、联系表单、主题切换
+├─ projects-view.js                # 首页项目卡片渲染模块
+├─ style.css                       # 首页 + 管理页样式
+├─ server.js                       # Node HTTP 服务、API、静态资源、日志、统一错误处理
+├─ db.js                           # SQLite 访问层、建表、默认数据、增删改查
+├─ ecosystem.config.js             # PM2 运行配置
+├─ package.json                    # 脚本与项目信息
+├─ scripts/
+│  ├─ init-db.js                   # 初始化数据库
+│  ├─ db-backup.js                 # 备份数据库
+│  ├─ db-restore.js                # 恢复数据库
+│  ├─ projects-self-check.js       # 项目接口与首页项目区自检
+│  └─ site-settings-self-check.js  # 站点配置接口自检
+└─ docs/
+   └─ backend-integration-analysis.md # 历史分析文档（已归档）
 ```
 
-## 如何在管理页测试增删改查
+---
 
-1. **查看项目列表**：打开管理页后会自动请求 `GET /api/projects` 并展示当前项目。
-2. **新增项目**：填写“项目标题 / 项目描述 / 项目链接”，点击“保存”，应看到“项目新增成功”。
-3. **编辑项目**：点击某条项目的“编辑”，修改后点击“保存”，应看到“项目修改成功”。
-4. **删除项目**：点击某条项目的“删除”，确认后应看到“项目删除成功”。
-5. **失败提示测试**：新增时将“项目标题”留空并提交，页面会显示中文错误提示。
+## 7. 上线前检查清单（建议逐项勾选）
 
-## 如何测试网站配置修改功能（本阶段新增）
+### 基础与安全
+- [ ] 已设置生产环境 `ADMIN_PASSWORD`（非默认值）
+- [ ] 服务器仅开放必要端口
+- [ ] 已确认数据库文件与备份目录权限正确
 
-1. 启动服务并设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
-2. 打开管理页：`http://localhost:3000/admin.html`
-3. 未验证时，“网站配置”表单按钮应显示“请先验证口令”，且输入框不可编辑
-4. 输入正确口令（如 `abc123`）并验证成功后：
-   - “网站配置”区域可编辑
-   - 会自动加载当前配置
-5. 修改以下任意字段并点击“保存网站配置”：
-   - `heroTitle`
-   - `heroSubtitle`
-   - `heroButtonText`
-   - `contactTitle`
-   - `contactDescription`
-   - `contactEmail`
-6. 页面应显示成功提示：`网站配置修改成功`
-7. 打开首页 `http://localhost:3000/` 并刷新，应看到新文案立即生效
-8. 可输入错误邮箱测试失败提示，应看到：`联系邮箱格式不正确`
+### 功能回归
+- [ ] 首页可正常加载项目与站点配置
+- [ ] 联系表单提交成功，异常输入可看到中文报错
+- [ ] 管理页口令验证成功/失败流程正常
+- [ ] 项目新增、编辑、删除流程正常
+- [ ] 网站配置保存后首页可立即生效
+- [ ] 留言列表仅在验证后可查看，顺序为最新优先
+- [ ] 健康检查接口返回服务与数据库状态
 
-## 如何测试健康检查功能（本阶段新增）
+### 运维与可靠性
+- [ ] `npm run db:backup` 可执行且生成备份文件
+- [ ] `npm run db:restore` 在测试环境验证通过
+- [ ] 请求日志与错误日志可正常查看
+- [ ] 不存在接口返回统一 JSON 错误结构
+- [ ] 不存在页面返回中文友好 404 页面
 
-1. 启动服务：`npm start`
-2. 打开管理页：`http://localhost:3000/admin.html`
-3. 在“系统状态”区域观察：
-   - 服务状态应显示“正常”
-   - 数据库状态应显示“可用”
-   - 数据库文件路径应显示类似：`/workspace/Colinspace-test/db/portfolio.sqlite`
-   - 服务器时间应显示当前时间
-4. 点击“刷新系统状态”按钮，确认状态可再次拉取
-5. 可用 curl 直接验证接口：
+### 自检
+- [ ] `npm run check:projects` 通过
+- [ ] `npm run check:site-settings` 通过
+
+---
+
+## 8. 日常维护清单
+
+### 每日/每次改动后
+- [ ] 看一眼服务启动日志，确认无异常
+- [ ] 随机访问首页和管理页关键路径
+- [ ] 检查当天请求日志是否有大量 4xx/5xx
+
+### 每周
+- [ ] 至少执行一次数据库备份并确认文件可读
+- [ ] 抽查最近留言是否可在管理页查看
+- [ ] 抽查健康检查接口返回是否正常
+
+### 每月
+- [ ] 做一次“备份恢复演练”（在测试环境）
+- [ ] 轮换管理口令
+- [ ] 清理过旧日志文件，避免占满磁盘
+
+---
+
+## 9. PM2（可选）
 
 ```bash
-curl http://localhost:3000/api/health
+npm run pm2:start
+npm run pm2:restart
+npm run pm2:stop
+npm run pm2:logs
+npm run pm2:save
 ```
 
-期望返回示例：
-
-```json
-{
-  "serviceStatus": "ok",
-  "databaseStatus": "ok",
-  "databaseFilePath": "/workspace/Colinspace-test/db/portfolio.sqlite",
-  "serverTime": "2026-04-23T12:00:00.000Z"
-}
-```
-
-## 如何查看与验证日志（本阶段新增）
-
-1. 启动服务：
-
-```bash
-npm start
-```
-
-2. 使用浏览器或 curl 访问任意接口，例如：
-
-```bash
-curl http://localhost:3000/api/projects
-curl http://localhost:3000/api/health
-```
-
-3. 回到启动服务的终端，确认出现日志行，且包含以下字段：
-   - 请求时间（ISO 时间）
-   - 请求方法（GET / POST / PUT / DELETE）
-   - 请求路径（如 `/api/projects`）
-   - 响应状态码（如 `200` / `404` / `500`）
-   - 处理耗时（如 `2.8ms`）
-
-4. 可手动触发一个错误场景验证错误日志（例如发送非法 JSON）：
-
-```bash
-curl -X POST http://localhost:3000/api/contact-messages \
-  -H "Content-Type: application/json" \
-  -d "{bad json}"
-```
-
-5. 终端应看到包含 `ERROR` 的日志，日志中仅有错误类型与简要信息，不包含完整敏感内容。
-
-## 如何测试留言查看功能
-
-1. 启动服务并设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
-2. 先在首页提交 1~2 条联系留言（`http://localhost:3000/` 底部 Contact 表单）
-3. 打开管理页：`http://localhost:3000/admin.html`
-4. 未验证口令时，“留言列表”区域应显示：`请先完成口令验证后查看留言列表。`
-5. 输入错误口令并验证，应看到口令错误提示，留言仍不可查看
-6. 输入正确口令（如 `abc123`）并验证：
-   - 留言区域先显示“留言加载中...”
-   - 成功后展示留言列表，字段包含：姓名、邮箱、留言内容、提交时间
-   - 列表顺序应为最新提交在最前
-7. 若当前没有留言，页面应显示：`暂无留言。`
-8. 点击“退出验证”后，应恢复只读提示，不再显示留言内容
-
-## 如何测试口令保护
-
-1. 启动服务时设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
-2. 打开 `http://localhost:3000/admin.html`
-3. 不输入口令时，页面应显示“当前状态：未验证（仅可查看）”，且新增/编辑/删除不可用
-4. 输入错误口令，页面应显示“管理口令错误”
-5. 输入正确口令（如 `abc123`）后，应显示“口令验证成功，现在可以管理项目”
-6. 此时可继续测试新增、编辑、删除是否正常
-7. 点击“退出验证”后，应回到“仅可查看”状态
-
-## 如何测试 404 与统一错误处理（本阶段新增）
-
-本阶段对页面与 API 的异常返回做了统一收敛，下面给出最小验证步骤。
-
-### 1) 测试不存在页面的 404（中文友好提示）
-
-1. 启动服务：`npm start`
-2. 浏览器打开：`http://localhost:3000/not-exists-page`
-3. 预期：
-   - HTTP 状态码为 `404`
-   - 页面显示中文提示（如“页面不存在”）
-   - 不出现 Node.js 错误堆栈
-
-### 2) 测试不存在接口的 404（统一 JSON 结构）
-
-执行：
-
-```bash
-curl -i http://localhost:3000/api/not-exists
-```
-
-预期响应类似：
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "API_NOT_FOUND",
-    "message": "未找到接口：GET /api/not-exists"
-  },
-  "message": "未找到接口：GET /api/not-exists"
-}
-```
-
-### 3) 测试 API 异常返回格式（以 JSON 解析失败为例）
-
-执行：
-
-```bash
-curl -i -X POST http://localhost:3000/api/contact-messages \
-  -H "Content-Type: application/json" \
-  -d "{bad-json}"
-```
-
-预期：
-
-- HTTP 状态码为 `400`
-- 响应体为统一 JSON 错误结构，`error.code` 为 `INVALID_JSON`
-- 前端可继续读取 `message` 字段展示中文文案
-
-### 4) 测试页面异常时的友好提示
-
-可通过临时制造静态文件读取异常（例如将文件权限改为不可读）来验证，预期：
-
-- 返回中文错误页面（状态码 `500`）
-- 页面不暴露内部异常详情与堆栈
-
-## 可选：用 curl 验证接口
-
-### 1) 查询项目列表
-
-```bash
-curl http://localhost:3000/api/projects
-```
-
-### 1.1) 查询留言列表（需要口令）
-
-```bash
-curl http://localhost:3000/api/contact-messages \
-  -H "X-Admin-Password: abc123"
-```
-
-### 1.2) 修改网站配置（需要口令）
-
-```bash
-curl -X PUT http://localhost:3000/api/site-settings \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-Password: abc123" \
-  -d '{
-    "heroTitle":"新的首页标题",
-    "heroSubtitle":"新的首页副标题",
-    "heroButtonText":"立即查看",
-    "contactTitle":"联系我",
-    "contactDescription":"欢迎通过邮箱发送合作需求。",
-    "contactEmail":"hello@example.com"
-  }'
-```
-
-### 1.3) 查询健康检查接口
-
-```bash
-curl http://localhost:3000/api/health
-```
-
-### 2) 新增项目
-
-```bash
-curl -X POST http://localhost:3000/api/projects \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-Password: abc123" \
-  -d '{
-    "title":"新的演示项目",
-    "description":"这是一个用于演示新增接口的项目。",
-    "link":"https://example.com/demo"
-  }'
-```
-
-### 3) 修改项目
-
-```bash
-curl -X PUT http://localhost:3000/api/projects/4 \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-Password: abc123" \
-  -d '{
-    "title":"新的演示项目（已更新）",
-    "description":"这是更新后的描述。",
-    "link":"https://example.com/demo-v2"
-  }'
-```
-
-### 4) 删除项目
-
-```bash
-curl -X DELETE http://localhost:3000/api/projects/4 \
-  -H "X-Admin-Password: abc123"
-```
+适合长期运行，避免进程意外退出后需手工拉起。
