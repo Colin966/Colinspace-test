@@ -1,11 +1,16 @@
-# 简洁静态网站（Phase 9：Site Settings 最小管理能力）
+# 简洁静态网站（Phase 10：新增最小健康检查能力）
 
-这是一个轻量级个人网站示例。当前阶段在原有 Projects 管理页基础上，新增了 Site Settings 最小管理能力：管理员验证口令后，可在管理页查看并修改首页关键文案配置。
+这是一个轻量级个人网站示例。当前阶段在原有 Projects 管理页基础上，新增了最小健康检查能力：可通过接口和管理页查看服务与数据库状态。
 
 ## 本阶段完成内容
 
 - 保持 `GET /api/projects` 不变
 - 保持首页 `GET /api/site-settings` 读取逻辑不变
+- 新增 `GET /api/health` 健康检查接口，返回：
+  - 服务状态（`serviceStatus`）
+  - 数据库状态（`databaseStatus`）
+  - 数据库文件路径（`databaseFilePath`）
+  - 服务器当前时间（`serverTime`）
 - 新增 `PUT /api/site-settings`（仅管理员口令通过后可访问）
 - 管理页新增“网站配置”区域，可编辑以下字段：
   - `heroTitle`
@@ -22,6 +27,7 @@
   - `DELETE /api/projects/:id`
 - 新增管理页：`/admin.html`
 - 管理页新增“网站配置”区域
+- 管理页新增“系统状态”区域，可查看服务状态、数据库状态、数据库文件路径与服务器时间
 - 管理页保留“留言列表”区域（只读）
 - 管理页适配 iPad 触控操作（按钮更大、布局更简洁）
 - 页面内新增中文成功/失败提示
@@ -30,10 +36,10 @@
 ## 文件说明
 
 - `admin.html`：Projects 管理页面结构
-- `admin.js`：管理页交互逻辑（项目管理 + 网站配置管理 + 留言查看）
+- `admin.js`：管理页交互逻辑（项目管理 + 网站配置管理 + 留言查看 + 健康检查展示）
 - `style.css`：管理页样式（简洁布局 + 触控友好按钮）
-- `server.js`：API 路由与校验逻辑（含网站配置更新接口）
-- `db.js`：数据持久化（含网站配置更新逻辑）
+- `server.js`：API 路由与校验逻辑（含网站配置更新接口与健康检查接口）
+- `db.js`：数据持久化（含网站配置更新逻辑与数据库健康检查）
 
 ## 环境要求
 
@@ -202,6 +208,33 @@ http://localhost:3000/admin.html
 7. 打开首页 `http://localhost:3000/` 并刷新，应看到新文案立即生效
 8. 可输入错误邮箱测试失败提示，应看到：`联系邮箱格式不正确`
 
+## 如何测试健康检查功能（本阶段新增）
+
+1. 启动服务：`npm start`
+2. 打开管理页：`http://localhost:3000/admin.html`
+3. 在“系统状态”区域观察：
+   - 服务状态应显示“正常”
+   - 数据库状态应显示“可用”
+   - 数据库文件路径应显示类似：`/workspace/Colinspace-test/db/portfolio.sqlite`
+   - 服务器时间应显示当前时间
+4. 点击“刷新系统状态”按钮，确认状态可再次拉取
+5. 可用 curl 直接验证接口：
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+期望返回示例：
+
+```json
+{
+  "serviceStatus": "ok",
+  "databaseStatus": "ok",
+  "databaseFilePath": "/workspace/Colinspace-test/db/portfolio.sqlite",
+  "serverTime": "2026-04-23T12:00:00.000Z"
+}
+```
+
 ## 如何测试留言查看功能
 
 1. 启动服务并设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
@@ -255,6 +288,12 @@ curl -X PUT http://localhost:3000/api/site-settings \
     "contactDescription":"欢迎通过邮箱发送合作需求。",
     "contactEmail":"hello@example.com"
   }'
+```
+
+### 1.3) 查询健康检查接口
+
+```bash
+curl http://localhost:3000/api/health
 ```
 
 ### 2) 新增项目

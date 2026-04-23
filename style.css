@@ -354,6 +354,36 @@ body.dark-mode .admin-auth-status.error {
   gap: 0.75rem;
 }
 
+.admin-status-tip {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.system-status-list p {
+  margin: 0.4rem 0;
+}
+
+.system-status-list code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.92rem;
+}
+
+.status-ok {
+  color: #0f766e;
+}
+
+.status-error {
+  color: #b91c1c;
+}
+
+body.dark-mode .status-ok {
+  color: #34d399;
+}
+
+body.dark-mode .status-error {
+  color: #fca5a5;
+}
+
 .admin-feedback.success {
   color: #0f766e;
 }

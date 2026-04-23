@@ -2,6 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const {
+  DB_PATH,
+  checkDatabaseHealth,
   initializeDatabase,
   getProjects,
   getSiteSettings,
@@ -169,6 +171,28 @@ function serveStaticFile(reqPath, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  // Health 接口：给运维或管理页提供最小可观测信息
+  if (req.method === 'GET' && url.pathname === '/api/health') {
+    const databaseHealth = checkDatabaseHealth();
+    const payload = {
+      serviceStatus: 'ok',
+      databaseStatus: databaseHealth.ok ? 'ok' : 'error',
+      databaseFilePath: DB_PATH,
+      serverTime: new Date().toISOString(),
+    };
+
+    if (!databaseHealth.ok) {
+      sendJson(res, 503, {
+        ...payload,
+        message: databaseHealth.message || '数据库不可用',
+      });
+      return;
+    }
+
+    sendJson(res, 200, payload);
+    return;
+  }
 
   // Site Settings 接口：返回首页最小配置
   if (req.method === 'GET' && url.pathname === '/api/site-settings') {

@@ -10,6 +10,8 @@
   const authFormElement = document.getElementById('auth-form');
   const authPasswordInput = document.getElementById('admin-password');
   const logoutButton = document.getElementById('logout-button');
+  const systemStatusElement = document.getElementById('system-status');
+  const refreshHealthButton = document.getElementById('refresh-health-button');
   const saveButton = document.getElementById('save-button');
   const siteSettingsFormElement = document.getElementById('site-settings-form');
   const saveSiteSettingsButton = document.getElementById('save-site-settings-button');
@@ -194,6 +196,28 @@
     messagesListElement.innerHTML = '';
   }
 
+  function formatServerTime(isoText) {
+    const date = new Date(isoText);
+    if (Number.isNaN(date.getTime())) {
+      return '时间格式异常';
+    }
+
+    return date.toLocaleString('zh-CN', { hour12: false });
+  }
+
+  function renderSystemStatus(data) {
+    const serviceOk = data.serviceStatus === 'ok';
+    const databaseOk = data.databaseStatus === 'ok';
+
+    // 统一在一个区域展示最小运维信息，便于新手快速判断问题
+    systemStatusElement.innerHTML = `
+      <p>服务状态：<strong class="${serviceOk ? 'status-ok' : 'status-error'}">${serviceOk ? '正常' : '异常'}</strong></p>
+      <p>数据库状态：<strong class="${databaseOk ? 'status-ok' : 'status-error'}">${databaseOk ? '可用' : '不可用'}</strong></p>
+      <p>数据库文件路径：<code>${escapeHtml(data.databaseFilePath || '未知')}</code></p>
+      <p>服务器时间：${escapeHtml(formatServerTime(data.serverTime))}</p>
+    `;
+  }
+
   function getAdminHeaders() {
     if (!state.adminPassword) {
       return {};
@@ -317,6 +341,34 @@
       fillSiteSettingsForm(siteSettings);
     } catch (error) {
       showFeedback(error.message || '网站配置读取失败', 'error');
+    }
+  }
+
+  async function loadHealthStatus() {
+    systemStatusElement.innerHTML = `
+      <p>服务状态：检测中...</p>
+      <p>数据库状态：检测中...</p>
+      <p>数据库文件路径：读取中...</p>
+      <p>服务器时间：读取中...</p>
+    `;
+
+    try {
+      const response = await fetch('/api/health');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '系统状态读取失败');
+      }
+
+      renderSystemStatus(data);
+    } catch (error) {
+      systemStatusElement.innerHTML = `
+        <p>服务状态：<strong class="status-error">读取失败</strong></p>
+        <p>数据库状态：<strong class="status-error">读取失败</strong></p>
+        <p>数据库文件路径：暂时不可用</p>
+        <p>服务器时间：暂时不可用</p>
+      `;
+      showFeedback(error.message || '系统状态读取失败，请稍后重试', 'error');
     }
   }
 
@@ -508,6 +560,7 @@
 
   authFormElement.addEventListener('submit', handleAuthSubmit);
   logoutButton.addEventListener('click', handleLogout);
+  refreshHealthButton.addEventListener('click', loadHealthStatus);
   formElement.addEventListener('submit', submitProject);
   siteSettingsFormElement.addEventListener('submit', submitSiteSettings);
   cancelButton.addEventListener('click', resetForm);
@@ -515,6 +568,7 @@
 
   resetContactMessagesView('请先完成口令验证后查看留言列表。');
   restoreAuthFromSession();
+  loadHealthStatus();
   loadProjects();
   loadSiteSettings();
 })();

@@ -59,6 +59,24 @@ function openDatabase() {
   return new DatabaseSync(DB_PATH);
 }
 
+function checkDatabaseHealth() {
+  const db = openDatabase();
+
+  try {
+    // 最小健康检查：执行一条轻量查询确认数据库可读
+    db.prepare('SELECT 1 AS ok').get();
+    return { ok: true, dbPath: DB_PATH };
+  } catch (error) {
+    return {
+      ok: false,
+      dbPath: DB_PATH,
+      message: error instanceof Error ? error.message : '数据库检查失败',
+    };
+  } finally {
+    db.close();
+  }
+}
+
 function initializeDatabase() {
   const db = openDatabase();
 
@@ -242,6 +260,7 @@ module.exports = {
   DB_PATH,
   DEFAULT_SITE_SETTINGS,
   EDITABLE_SITE_SETTING_KEYS,
+  checkDatabaseHealth,
   initializeDatabase,
   getProjects,
   getSiteSettings,

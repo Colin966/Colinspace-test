@@ -30,6 +30,22 @@
         </form>
       </section>
 
+      <section class="admin-card" aria-label="系统状态">
+        <h2>系统状态</h2>
+        <p class="admin-status-tip">用于快速查看服务与数据库是否正常。</p>
+        <div id="system-status" class="system-status-list" role="status" aria-live="polite">
+          <p>服务状态：检测中...</p>
+          <p>数据库状态：检测中...</p>
+          <p>数据库文件路径：读取中...</p>
+          <p>服务器时间：读取中...</p>
+        </div>
+        <div class="admin-form-actions">
+          <button id="refresh-health-button" class="admin-secondary" type="button">
+            刷新系统状态
+          </button>
+        </div>
+      </section>
+
       <section class="admin-card" aria-label="新增或编辑项目">
         <h2 id="form-title">新增项目</h2>
         <form id="project-form" class="admin-form" novalidate>
