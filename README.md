@@ -259,6 +259,63 @@ curl http://localhost:3000/api/health
 6. 此时可继续测试新增、编辑、删除是否正常
 7. 点击“退出验证”后，应回到“仅可查看”状态
 
+## 如何测试 404 与统一错误处理（本阶段新增）
+
+本阶段对页面与 API 的异常返回做了统一收敛，下面给出最小验证步骤。
+
+### 1) 测试不存在页面的 404（中文友好提示）
+
+1. 启动服务：`npm start`
+2. 浏览器打开：`http://localhost:3000/not-exists-page`
+3. 预期：
+   - HTTP 状态码为 `404`
+   - 页面显示中文提示（如“页面不存在”）
+   - 不出现 Node.js 错误堆栈
+
+### 2) 测试不存在接口的 404（统一 JSON 结构）
+
+执行：
+
+```bash
+curl -i http://localhost:3000/api/not-exists
+```
+
+预期响应类似：
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "API_NOT_FOUND",
+    "message": "未找到接口：GET /api/not-exists"
+  },
+  "message": "未找到接口：GET /api/not-exists"
+}
+```
+
+### 3) 测试 API 异常返回格式（以 JSON 解析失败为例）
+
+执行：
+
+```bash
+curl -i -X POST http://localhost:3000/api/contact-messages \
+  -H "Content-Type: application/json" \
+  -d "{bad-json}"
+```
+
+预期：
+
+- HTTP 状态码为 `400`
+- 响应体为统一 JSON 错误结构，`error.code` 为 `INVALID_JSON`
+- 前端可继续读取 `message` 字段展示中文文案
+
+### 4) 测试页面异常时的友好提示
+
+可通过临时制造静态文件读取异常（例如将文件权限改为不可读）来验证，预期：
+
+- 返回中文错误页面（状态码 `500`）
+- 页面不暴露内部异常详情与堆栈
+
 ## 可选：用 curl 验证接口
 
 ### 1) 查询项目列表
