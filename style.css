@@ -148,6 +148,14 @@ body {
   padding: 0 0 2rem;
 }
 
+
+.projects-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .project-card,
 .contact {
   background: var(--surface);
