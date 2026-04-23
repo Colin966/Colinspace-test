@@ -1,0 +1,82 @@
+const fs = require('fs');
+const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
+
+// 数据库文件放在 db 目录，方便管理
+const DB_DIR = path.join(__dirname, 'db');
+const DB_PATH = path.join(DB_DIR, 'portfolio.sqlite');
+
+const initialProjects = [
+  {
+    title: '个人作品集网站',
+    description:
+      '面向个人品牌展示的官网，聚焦项目案例、专业能力与联系方式，兼顾视觉表达与加载性能。',
+  },
+  {
+    title: '任务管理应用',
+    description:
+      '以“今日重点”为核心的效率工具，支持快速记录、状态更新与清晰分组，帮助团队保持执行节奏。',
+  },
+  {
+    title: '数据分析看板',
+    description:
+      '围绕关键业务指标设计的信息看板，通过卡片化结构与明确层级，让决策信息一目了然。',
+  },
+];
+
+function ensureDbDirectory() {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+function openDatabase() {
+  ensureDbDirectory();
+  return new DatabaseSync(DB_PATH);
+}
+
+function initializeDatabase() {
+  const db = openDatabase();
+
+  // 建表：项目主键 + 标题 + 描述
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL
+    )
+  `);
+
+  const countRow = db.prepare('SELECT COUNT(*) AS count FROM projects').get();
+
+  // 首次初始化时写入最少量示例数据，保证前端可展示
+  if (countRow.count === 0) {
+    const insertStatement = db.prepare(
+      'INSERT INTO projects (title, description) VALUES (?, ?)'
+    );
+
+    for (const project of initialProjects) {
+      insertStatement.run(project.title, project.description);
+    }
+  }
+
+  db.close();
+}
+
+function getProjects() {
+  const db = openDatabase();
+  const rows = db
+    .prepare(
+      `SELECT id, title, description
+       FROM projects
+       ORDER BY id ASC`
+    )
+    .all();
+  db.close();
+
+  return rows;
+}
+
+module.exports = {
+  DB_PATH,
+  initializeDatabase,
+  getProjects,
+};
