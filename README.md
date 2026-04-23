@@ -1,25 +1,26 @@
-# 简洁静态网站（Phase 6：Projects 最小管理能力）
+# 简洁静态网站（Phase 7：Projects 最小管理页面）
 
-这是一个轻量级个人网站示例。当前阶段在尽量不改动现有前端页面结构和样式的前提下，补齐了 Projects 的最小管理能力（新增 / 修改 / 删除接口），并保持原有查询接口不变。
+这是一个轻量级个人网站示例。当前阶段新增了一个原生 HTML/CSS/JS 的 Projects 管理页，支持查看、新增、编辑、删除项目，直接调用现有后端接口。
 
 ## 本阶段完成内容
 
 - 保持 `GET /api/projects` 不变
-- 新增 `POST /api/projects`
-- 新增 `PUT /api/projects/:id`
-- 新增 `DELETE /api/projects/:id`
-- 为 Projects 增加基础校验：
-  - `title` 必填
-  - `description` 最大长度 500
-  - `link` 为空或必须以 `http://` / `https://` 开头
-- 新接口统一返回清晰中文成功/失败信息
-- 数据库 `projects` 表新增 `link` 字段，并兼容旧库自动补列
+- 使用已有接口实现管理页面 CRUD：
+  - `POST /api/projects`
+  - `PUT /api/projects/:id`
+  - `DELETE /api/projects/:id`
+- 新增管理页：`/admin.html`
+- 管理页适配 iPad 触控操作（按钮更大、布局更简洁）
+- 页面内新增中文成功/失败提示
+- 保持代码易读，关键逻辑添加简洁中文注释
 
 ## 文件说明
 
-- `server.js`：新增 Projects 的 POST / PUT / DELETE 路由与校验逻辑
-- `db.js`：新增 Projects 的增删改方法，并补充 `link` 字段迁移逻辑
-- `README.md`：更新本阶段说明与 `curl` 测试方式
+- `admin.html`：Projects 管理页面结构
+- `admin.js`：管理页交互逻辑（加载、增删改、提示）
+- `style.css`：管理页样式（简洁布局 + 触控友好按钮）
+- `server.js`：Projects API 路由与校验逻辑（已在上一阶段完成）
+- `db.js`：Projects 数据持久化（已在上一阶段完成）
 
 ## 环境要求
 
@@ -45,23 +46,32 @@ npm start
 Server running at http://localhost:3000
 ```
 
-浏览器打开：
+## 如何进入管理页
+
+1. 先启动项目：`npm start`
+2. 浏览器访问：
 
 ```text
-http://localhost:3000
+http://localhost:3000/admin.html
 ```
 
-## 如何用 curl 测试 Projects 接口
+## 如何在管理页测试增删改查
 
-### 1) 查询项目列表（保持不变）
+1. **查看项目列表**：打开管理页后会自动请求 `GET /api/projects` 并展示当前项目。
+2. **新增项目**：填写“项目标题 / 项目描述 / 项目链接”，点击“保存”，应看到“项目新增成功”。
+3. **编辑项目**：点击某条项目的“编辑”，修改后点击“保存”，应看到“项目修改成功”。
+4. **删除项目**：点击某条项目的“删除”，确认后应看到“项目删除成功”。
+5. **失败提示测试**：新增时将“项目标题”留空并提交，页面会显示中文错误提示。
+
+## 可选：用 curl 验证接口
+
+### 1) 查询项目列表
 
 ```bash
 curl http://localhost:3000/api/projects
 ```
 
-预期：返回 `projects` 数组。
-
-### 2) 新增项目（POST /api/projects）
+### 2) 新增项目
 
 ```bash
 curl -X POST http://localhost:3000/api/projects \
@@ -73,13 +83,7 @@ curl -X POST http://localhost:3000/api/projects \
   }'
 ```
 
-成功响应示例：
-
-```json
-{"message":"项目新增成功","id":4}
-```
-
-### 3) 修改项目（PUT /api/projects/:id）
+### 3) 修改项目
 
 ```bash
 curl -X PUT http://localhost:3000/api/projects/4 \
@@ -91,44 +95,8 @@ curl -X PUT http://localhost:3000/api/projects/4 \
   }'
 ```
 
-成功响应示例：
-
-```json
-{"message":"项目修改成功"}
-```
-
-### 4) 删除项目（DELETE /api/projects/:id）
+### 4) 删除项目
 
 ```bash
 curl -X DELETE http://localhost:3000/api/projects/4
-```
-
-成功响应示例：
-
-```json
-{"message":"项目删除成功"}
-```
-
-### 5) 参数校验失败示例
-
-```bash
-curl -X POST http://localhost:3000/api/projects \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title":"",
-    "description":"描述",
-    "link":"ftp://invalid-link"
-  }'
-```
-
-可能返回：
-
-```json
-{"message":"项目标题为必填项"}
-```
-
-或：
-
-```json
-{"message":"项目链接格式不正确，需以 http:// 或 https:// 开头"}
 ```
