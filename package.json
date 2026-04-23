@@ -5,6 +5,7 @@
   "description": "Simple portfolio site with Node.js API and SQLite projects storage",
   "scripts": {
     "start": "node server.js",
-    "db:init": "node scripts/init-db.js"
+    "db:init": "node scripts/init-db.js",
+    "check:projects": "node scripts/projects-self-check.js"
   }
 }
