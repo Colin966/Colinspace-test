@@ -1,10 +1,19 @@
-# 简洁静态网站（Phase 8：Contact 留言最小查看能力）
+# 简洁静态网站（Phase 9：Site Settings 最小管理能力）
 
-这是一个轻量级个人网站示例。当前阶段在原有 Projects 管理页基础上，新增了 Contact 留言的最小查看能力：管理员验证口令后，可在管理页查看最近留言列表（只读）。
+这是一个轻量级个人网站示例。当前阶段在原有 Projects 管理页基础上，新增了 Site Settings 最小管理能力：管理员验证口令后，可在管理页查看并修改首页关键文案配置。
 
 ## 本阶段完成内容
 
 - 保持 `GET /api/projects` 不变
+- 保持首页 `GET /api/site-settings` 读取逻辑不变
+- 新增 `PUT /api/site-settings`（仅管理员口令通过后可访问）
+- 管理页新增“网站配置”区域，可编辑以下字段：
+  - `heroTitle`
+  - `heroSubtitle`（服务端映射保存到 `heroDescription`，兼容现有首页读取）
+  - `heroButtonText`
+  - `contactTitle`
+  - `contactDescription`
+  - `contactEmail`
 - 新增 `GET /api/contact-messages`（仅管理员口令通过后可访问）
 - 留言按提交时间倒序返回（最近提交的在最前）
 - 使用已有接口实现管理页面 CRUD：
@@ -12,7 +21,8 @@
   - `PUT /api/projects/:id`
   - `DELETE /api/projects/:id`
 - 新增管理页：`/admin.html`
-- 管理页新增“留言列表”区域（只读）
+- 管理页新增“网站配置”区域
+- 管理页保留“留言列表”区域（只读）
 - 管理页适配 iPad 触控操作（按钮更大、布局更简洁）
 - 页面内新增中文成功/失败提示
 - 保持代码易读，关键逻辑添加简洁中文注释
@@ -20,10 +30,10 @@
 ## 文件说明
 
 - `admin.html`：Projects 管理页面结构
-- `admin.js`：管理页交互逻辑（项目管理 + 留言查看提示与加载）
+- `admin.js`：管理页交互逻辑（项目管理 + 网站配置管理 + 留言查看）
 - `style.css`：管理页样式（简洁布局 + 触控友好按钮）
-- `server.js`：API 路由与校验逻辑（含留言读取接口）
-- `db.js`：数据持久化（含留言读取 SQL）
+- `server.js`：API 路由与校验逻辑（含网站配置更新接口）
+- `db.js`：数据持久化（含网站配置更新逻辑）
 
 ## 环境要求
 
@@ -93,7 +103,26 @@ http://localhost:3000/admin.html
 4. **删除项目**：点击某条项目的“删除”，确认后应看到“项目删除成功”。
 5. **失败提示测试**：新增时将“项目标题”留空并提交，页面会显示中文错误提示。
 
-## 如何测试留言查看功能（本阶段新增）
+## 如何测试网站配置修改功能（本阶段新增）
+
+1. 启动服务并设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
+2. 打开管理页：`http://localhost:3000/admin.html`
+3. 未验证时，“网站配置”表单按钮应显示“请先验证口令”，且输入框不可编辑
+4. 输入正确口令（如 `abc123`）并验证成功后：
+   - “网站配置”区域可编辑
+   - 会自动加载当前配置
+5. 修改以下任意字段并点击“保存网站配置”：
+   - `heroTitle`
+   - `heroSubtitle`
+   - `heroButtonText`
+   - `contactTitle`
+   - `contactDescription`
+   - `contactEmail`
+6. 页面应显示成功提示：`网站配置修改成功`
+7. 打开首页 `http://localhost:3000/` 并刷新，应看到新文案立即生效
+8. 可输入错误邮箱测试失败提示，应看到：`联系邮箱格式不正确`
+
+## 如何测试留言查看功能
 
 1. 启动服务并设置口令，例如：`ADMIN_PASSWORD=abc123 npm start`
 2. 先在首页提交 1~2 条联系留言（`http://localhost:3000/` 底部 Contact 表单）
@@ -130,6 +159,22 @@ curl http://localhost:3000/api/projects
 ```bash
 curl http://localhost:3000/api/contact-messages \
   -H "X-Admin-Password: abc123"
+```
+
+### 1.2) 修改网站配置（需要口令）
+
+```bash
+curl -X PUT http://localhost:3000/api/site-settings \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Password: abc123" \
+  -d '{
+    "heroTitle":"新的首页标题",
+    "heroSubtitle":"新的首页副标题",
+    "heroButtonText":"立即查看",
+    "contactTitle":"联系我",
+    "contactDescription":"欢迎通过邮箱发送合作需求。",
+    "contactEmail":"hello@example.com"
+  }'
 ```
 
 ### 2) 新增项目

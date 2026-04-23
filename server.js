@@ -5,6 +5,7 @@ const {
   initializeDatabase,
   getProjects,
   getSiteSettings,
+  updateSiteSettings,
   createContactMessage,
   getContactMessages,
   createProject,
@@ -104,6 +105,39 @@ function validateProjectPayload(payload) {
   };
 }
 
+function validateSiteSettingsPayload(payload) {
+  const heroTitle = typeof payload.heroTitle === 'string' ? payload.heroTitle.trim() : '';
+  const heroSubtitle = typeof payload.heroSubtitle === 'string' ? payload.heroSubtitle.trim() : '';
+  const heroButtonText =
+    typeof payload.heroButtonText === 'string' ? payload.heroButtonText.trim() : '';
+  const contactTitle = typeof payload.contactTitle === 'string' ? payload.contactTitle.trim() : '';
+  const contactDescription =
+    typeof payload.contactDescription === 'string' ? payload.contactDescription.trim() : '';
+  const contactEmail = typeof payload.contactEmail === 'string' ? payload.contactEmail.trim() : '';
+
+  if (!heroTitle || !heroSubtitle || !heroButtonText || !contactTitle || !contactDescription) {
+    return { valid: false, message: '网站配置字段不能为空' };
+  }
+
+  if (!emailPattern.test(contactEmail)) {
+    return { valid: false, message: '联系邮箱格式不正确' };
+  }
+
+  return {
+    valid: true,
+    payload: {
+      heroTitle,
+      // 首页仍读取 heroDescription，这里将 heroSubtitle 映射存储为 heroDescription
+      heroDescription: heroSubtitle,
+      heroButtonText,
+      contactTitle,
+      contactDescription,
+      contactEmail,
+      contactEmailLabel: contactEmail,
+    },
+  };
+}
+
 function isAdminAuthorized(req) {
   const providedPassword = req.headers['x-admin-password'];
   return typeof providedPassword === 'string' && providedPassword === ADMIN_PASSWORD;
@@ -146,6 +180,40 @@ const server = http.createServer(async (req, res) => {
     }
 
     return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/site-settings') {
+    if (!isAdminAuthorized(req)) {
+      sendJson(res, 401, { message: '未通过管理口令验证，不能修改网站配置' });
+      return;
+    }
+
+    try {
+      const rawBody = await readRequestBody(req);
+      const parsedBody = JSON.parse(rawBody || '{}');
+      const validation = validateSiteSettingsPayload(parsedBody);
+
+      if (!validation.valid) {
+        sendJson(res, 400, { message: validation.message });
+        return;
+      }
+
+      updateSiteSettings(validation.payload);
+      sendJson(res, 200, { message: '网站配置修改成功' });
+      return;
+    } catch (error) {
+      if (error.message === 'PAYLOAD_TOO_LARGE') {
+        sendJson(res, 413, { message: '请求体过大' });
+        return;
+      }
+      if (error instanceof SyntaxError) {
+        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        return;
+      }
+
+      sendJson(res, 500, { message: '网站配置修改失败，请稍后重试' });
+      return;
+    }
   }
 
   // Projects 接口：改为从数据库读取
