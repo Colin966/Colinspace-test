@@ -6,11 +6,16 @@ const {
   getProjects,
   getSiteSettings,
   createContactMessage,
+  createProject,
+  updateProjectById,
+  deleteProjectById,
 } = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 500;
+const MAX_PROJECT_DESCRIPTION_LENGTH = 500;
+const httpLinkPattern = /^https?:\/\/[^\s]+$/i;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -66,6 +71,37 @@ function validateContactPayload(payload) {
   return { valid: true, payload: { name, email, message } };
 }
 
+function validateProjectPayload(payload) {
+  const title = typeof payload.title === 'string' ? payload.title.trim() : '';
+  const description = typeof payload.description === 'string' ? payload.description.trim() : '';
+  const link = typeof payload.link === 'string' ? payload.link.trim() : '';
+
+  if (!title) {
+    return { valid: false, message: '项目标题为必填项' };
+  }
+
+  if (description.length > MAX_PROJECT_DESCRIPTION_LENGTH) {
+    return {
+      valid: false,
+      message: `项目描述不能超过 ${MAX_PROJECT_DESCRIPTION_LENGTH} 个字符`,
+    };
+  }
+
+  // link 允许为空；有值时做最基础 URL 格式校验
+  if (link && !httpLinkPattern.test(link)) {
+    return { valid: false, message: '项目链接格式不正确，需以 http:// 或 https:// 开头' };
+  }
+
+  return {
+    valid: true,
+    payload: {
+      title,
+      description,
+      link,
+    },
+  };
+}
+
 function serveStaticFile(reqPath, res) {
   const filePath = reqPath === '/' ? '/index.html' : reqPath;
   const resolvedPath = path.join(__dirname, filePath);
@@ -115,6 +151,94 @@ const server = http.createServer(async (req, res) => {
     }
 
     return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/projects') {
+    try {
+      const rawBody = await readRequestBody(req);
+      const parsedBody = JSON.parse(rawBody || '{}');
+      const validation = validateProjectPayload(parsedBody);
+
+      if (!validation.valid) {
+        sendJson(res, 400, { message: validation.message });
+        return;
+      }
+
+      const insertedId = createProject(validation.payload);
+      sendJson(res, 201, { message: '项目新增成功', id: insertedId });
+      return;
+    } catch (error) {
+      if (error.message === 'PAYLOAD_TOO_LARGE') {
+        sendJson(res, 413, { message: '请求体过大' });
+        return;
+      }
+      if (error instanceof SyntaxError) {
+        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        return;
+      }
+
+      sendJson(res, 500, { message: '项目新增失败，请稍后重试' });
+      return;
+    }
+  }
+
+  if (
+    (req.method === 'PUT' || req.method === 'DELETE') &&
+    /^\/api\/projects\/\d+$/.test(url.pathname)
+  ) {
+    const projectId = Number(url.pathname.split('/').pop());
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      sendJson(res, 400, { message: '项目 id 不合法' });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        const deletedCount = deleteProjectById(projectId);
+        if (deletedCount === 0) {
+          sendJson(res, 404, { message: '未找到要删除的项目' });
+          return;
+        }
+
+        sendJson(res, 200, { message: '项目删除成功' });
+        return;
+      } catch (error) {
+        sendJson(res, 500, { message: '项目删除失败，请稍后重试' });
+        return;
+      }
+    }
+
+    try {
+      const rawBody = await readRequestBody(req);
+      const parsedBody = JSON.parse(rawBody || '{}');
+      const validation = validateProjectPayload(parsedBody);
+
+      if (!validation.valid) {
+        sendJson(res, 400, { message: validation.message });
+        return;
+      }
+
+      const updatedCount = updateProjectById(projectId, validation.payload);
+      if (updatedCount === 0) {
+        sendJson(res, 404, { message: '未找到要修改的项目' });
+        return;
+      }
+
+      sendJson(res, 200, { message: '项目修改成功' });
+      return;
+    } catch (error) {
+      if (error.message === 'PAYLOAD_TOO_LARGE') {
+        sendJson(res, 413, { message: '请求体过大' });
+        return;
+      }
+      if (error instanceof SyntaxError) {
+        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        return;
+      }
+
+      sendJson(res, 500, { message: '项目修改失败，请稍后重试' });
+      return;
+    }
   }
 
   // Contact 接口：接收联系表单提交

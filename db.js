@@ -56,9 +56,17 @@ function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      description TEXT NOT NULL
+      description TEXT NOT NULL,
+      link TEXT
     )
   `);
+
+  // 兼容旧库：如果历史 projects 表没有 link 字段，则补充该字段
+  const projectColumns = db.prepare('PRAGMA table_info(projects)').all();
+  const hasLinkColumn = projectColumns.some((column) => column.name === 'link');
+  if (!hasLinkColumn) {
+    db.exec('ALTER TABLE projects ADD COLUMN link TEXT');
+  }
 
   // 建表：联系留言，保留最基础字段与提交时间
   db.exec(`
@@ -84,11 +92,11 @@ function initializeDatabase() {
   // 首次初始化时写入最少量示例数据，保证前端可展示
   if (projectCountRow.count === 0) {
     const insertStatement = db.prepare(
-      'INSERT INTO projects (title, description) VALUES (?, ?)'
+      'INSERT INTO projects (title, description, link) VALUES (?, ?, ?)'
     );
 
     for (const project of initialProjects) {
-      insertStatement.run(project.title, project.description);
+      insertStatement.run(project.title, project.description, null);
     }
   }
 
@@ -108,6 +116,7 @@ function getProjects() {
   const rows = db
     .prepare(
       `SELECT id, title, description
+              , link
        FROM projects
        ORDER BY id ASC`
     )
@@ -153,6 +162,40 @@ function createContactMessage(payload) {
   return Number(result.lastInsertRowid);
 }
 
+function createProject(payload) {
+  const db = openDatabase();
+  const insertStatement = db.prepare(
+    `INSERT INTO projects (title, description, link)
+     VALUES (?, ?, ?)`
+  );
+  const result = insertStatement.run(payload.title, payload.description, payload.link || null);
+  db.close();
+
+  return Number(result.lastInsertRowid);
+}
+
+function updateProjectById(id, payload) {
+  const db = openDatabase();
+  const updateStatement = db.prepare(
+    `UPDATE projects
+     SET title = ?, description = ?, link = ?
+     WHERE id = ?`
+  );
+  const result = updateStatement.run(payload.title, payload.description, payload.link || null, id);
+  db.close();
+
+  return Number(result.changes || 0);
+}
+
+function deleteProjectById(id) {
+  const db = openDatabase();
+  const deleteStatement = db.prepare('DELETE FROM projects WHERE id = ?');
+  const result = deleteStatement.run(id);
+  db.close();
+
+  return Number(result.changes || 0);
+}
+
 module.exports = {
   DB_PATH,
   DEFAULT_SITE_SETTINGS,
@@ -160,4 +203,7 @@ module.exports = {
   getProjects,
   getSiteSettings,
   createContactMessage,
+  createProject,
+  updateProjectById,
+  deleteProjectById,
 };
