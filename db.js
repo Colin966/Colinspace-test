@@ -162,6 +162,20 @@ function createContactMessage(payload) {
   return Number(result.lastInsertRowid);
 }
 
+function getContactMessages() {
+  const db = openDatabase();
+  const rows = db
+    .prepare(
+      `SELECT id, name, email, message, created_at
+       FROM contact_messages
+       ORDER BY created_at DESC, id DESC`
+    )
+    .all();
+  db.close();
+
+  return rows;
+}
+
 function createProject(payload) {
   const db = openDatabase();
   const insertStatement = db.prepare(
@@ -203,6 +217,7 @@ module.exports = {
   getProjects,
   getSiteSettings,
   createContactMessage,
+  getContactMessages,
   createProject,
   updateProjectById,
   deleteProjectById,

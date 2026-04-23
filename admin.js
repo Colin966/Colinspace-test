@@ -4,6 +4,8 @@
   const feedbackElement = document.getElementById('admin-feedback');
   const loadingElement = document.getElementById('admin-loading');
   const listElement = document.getElementById('projects-list');
+  const messagesLoadingElement = document.getElementById('messages-loading');
+  const messagesListElement = document.getElementById('messages-list');
   const authStatusElement = document.getElementById('auth-status');
   const authFormElement = document.getElementById('auth-form');
   const authPasswordInput = document.getElementById('admin-password');
@@ -21,6 +23,7 @@
 
   const state = {
     projects: [],
+    contactMessages: [],
     editingId: null,
     adminPassword: '',
   };
@@ -126,6 +129,49 @@
     listElement.innerHTML = state.projects.map((project) => createProjectItem(project)).join('');
   }
 
+  function formatMessageTime(isoText) {
+    const date = new Date(isoText);
+    if (Number.isNaN(date.getTime())) {
+      return '时间格式异常';
+    }
+
+    // 使用本地时间展示，便于管理员快速判断留言先后
+    return date.toLocaleString('zh-CN', { hour12: false });
+  }
+
+  function createContactMessageItem(item) {
+    const safeName = escapeHtml(item.name || '匿名');
+    const safeEmail = escapeHtml(item.email || '未知邮箱');
+    const safeMessage = escapeHtml(item.message || '');
+    const safeCreatedAt = escapeHtml(formatMessageTime(item.created_at));
+
+    return `
+      <article class="admin-item">
+        <div class="admin-item-content">
+          <h3>${safeName}</h3>
+          <p><strong>邮箱：</strong>${safeEmail}</p>
+          <p><strong>留言：</strong>${safeMessage || '（空）'}</p>
+          <p class="admin-item-meta"><strong>提交时间：</strong>${safeCreatedAt}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderContactMessages() {
+    if (!Array.isArray(state.contactMessages) || state.contactMessages.length === 0) {
+      messagesListElement.innerHTML = '<p class="projects-status">暂无留言。</p>';
+      return;
+    }
+
+    messagesListElement.innerHTML = state.contactMessages.map((item) => createContactMessageItem(item)).join('');
+  }
+
+  function resetContactMessagesView(tipText) {
+    state.contactMessages = [];
+    messagesLoadingElement.textContent = tipText;
+    messagesListElement.innerHTML = '';
+  }
+
   function getAdminHeaders() {
     if (!state.adminPassword) {
       return {};
@@ -168,12 +214,14 @@
       renderAuthStatus();
       showFeedback('口令验证成功，现在可以管理项目', 'success');
       authFormElement.reset();
+      await loadContactMessages();
     } catch (error) {
       state.adminPassword = '';
       sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
       setEditingControlsEnabled(false);
       renderAuthStatus();
       showFeedback(error.message || '口令验证失败', 'error');
+      resetContactMessagesView('请先完成口令验证后查看留言列表。');
     }
   }
 
@@ -183,6 +231,7 @@
     setEditingControlsEnabled(false);
     renderAuthStatus();
     showFeedback('已退出验证，当前只能查看项目列表', 'success');
+    resetContactMessagesView('请先完成口令验证后查看留言列表。');
   }
 
   async function restoreAuthFromSession() {
@@ -198,12 +247,14 @@
       state.adminPassword = savedPassword;
       setEditingControlsEnabled(true);
       renderAuthStatus();
+      await loadContactMessages();
     } catch (error) {
       state.adminPassword = '';
       sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
       setEditingControlsEnabled(false);
       renderAuthStatus();
       showFeedback('之前的验证已失效，请重新输入口令', 'error');
+      resetContactMessagesView('请先完成口令验证后查看留言列表。');
     }
   }
 
@@ -225,6 +276,37 @@
       loadingElement.textContent = '';
       listElement.innerHTML = '<p class="projects-status">项目加载失败，请刷新后重试。</p>';
       showFeedback(error.message || '项目加载失败', 'error');
+    }
+  }
+
+  async function loadContactMessages() {
+    if (!state.adminPassword) {
+      resetContactMessagesView('请先完成口令验证后查看留言列表。');
+      return;
+    }
+
+    messagesLoadingElement.textContent = '留言加载中...';
+    messagesListElement.innerHTML = '';
+
+    try {
+      const response = await fetch('/api/contact-messages', {
+        headers: {
+          ...getAdminHeaders(),
+        },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '留言读取失败');
+      }
+
+      state.contactMessages = Array.isArray(data.messages) ? data.messages : [];
+      messagesLoadingElement.textContent = '';
+      renderContactMessages();
+    } catch (error) {
+      messagesLoadingElement.textContent = '';
+      messagesListElement.innerHTML = '<p class="projects-status">留言加载失败，请稍后重试。</p>';
+      showFeedback(error.message || '留言读取失败', 'error');
     }
   }
 
@@ -345,6 +427,7 @@
   cancelButton.addEventListener('click', resetForm);
   listElement.addEventListener('click', handleListClick);
 
+  resetContactMessagesView('请先完成口令验证后查看留言列表。');
   restoreAuthFromSession();
   loadProjects();
 })();
