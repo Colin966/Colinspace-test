@@ -39,6 +39,17 @@ const DEFAULT_SITE_SETTINGS = {
   contactEmailLabel: 'hello@example.com',
 };
 
+// 管理页允许修改的最小配置键（首页读取逻辑保持不变）
+const EDITABLE_SITE_SETTING_KEYS = [
+  'heroTitle',
+  'heroDescription',
+  'heroButtonText',
+  'contactTitle',
+  'contactDescription',
+  'contactEmail',
+  'contactEmailLabel',
+];
+
 function ensureDbDirectory() {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
@@ -148,6 +159,23 @@ function getSiteSettings() {
   return settings;
 }
 
+function updateSiteSettings(payload) {
+  const db = openDatabase();
+  const insertOrUpdateStatement = db.prepare(
+    `INSERT INTO site_settings (key, value)
+     VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  );
+
+  for (const key of EDITABLE_SITE_SETTING_KEYS) {
+    if (typeof payload[key] === 'string') {
+      insertOrUpdateStatement.run(key, payload[key]);
+    }
+  }
+
+  db.close();
+}
+
 function createContactMessage(payload) {
   const db = openDatabase();
   const insertStatement = db.prepare(
@@ -213,9 +241,11 @@ function deleteProjectById(id) {
 module.exports = {
   DB_PATH,
   DEFAULT_SITE_SETTINGS,
+  EDITABLE_SITE_SETTING_KEYS,
   initializeDatabase,
   getProjects,
   getSiteSettings,
+  updateSiteSettings,
   createContactMessage,
   getContactMessages,
   createProject,

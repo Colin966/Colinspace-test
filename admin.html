@@ -57,6 +57,47 @@
         </form>
       </section>
 
+      <section class="admin-card" aria-label="网站配置">
+        <h2>网站配置</h2>
+        <form id="site-settings-form" class="admin-form" novalidate>
+          <label class="form-field" for="setting-hero-title">
+            <span>Hero 标题（heroTitle）</span>
+            <input id="setting-hero-title" type="text" maxlength="120" required />
+          </label>
+
+          <label class="form-field" for="setting-hero-subtitle">
+            <span>Hero 副标题（heroSubtitle）</span>
+            <textarea id="setting-hero-subtitle" rows="3" maxlength="300" required></textarea>
+          </label>
+
+          <label class="form-field" for="setting-hero-button-text">
+            <span>Hero 按钮文案（heroButtonText）</span>
+            <input id="setting-hero-button-text" type="text" maxlength="40" required />
+          </label>
+
+          <label class="form-field" for="setting-contact-title">
+            <span>联系区标题（contactTitle）</span>
+            <input id="setting-contact-title" type="text" maxlength="60" required />
+          </label>
+
+          <label class="form-field" for="setting-contact-description">
+            <span>联系区描述（contactDescription）</span>
+            <textarea id="setting-contact-description" rows="3" maxlength="300" required></textarea>
+          </label>
+
+          <label class="form-field" for="setting-contact-email">
+            <span>联系邮箱（contactEmail）</span>
+            <input id="setting-contact-email" type="email" maxlength="120" required />
+          </label>
+
+          <div class="admin-form-actions">
+            <button id="save-site-settings-button" class="admin-primary" type="submit">
+              保存网站配置
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section class="admin-card" aria-label="项目列表">
         <h2>当前项目列表</h2>
         <p id="admin-loading" class="projects-status">项目加载中...</p>

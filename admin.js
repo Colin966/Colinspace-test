@@ -11,6 +11,14 @@
   const authPasswordInput = document.getElementById('admin-password');
   const logoutButton = document.getElementById('logout-button');
   const saveButton = document.getElementById('save-button');
+  const siteSettingsFormElement = document.getElementById('site-settings-form');
+  const saveSiteSettingsButton = document.getElementById('save-site-settings-button');
+  const heroTitleInput = document.getElementById('setting-hero-title');
+  const heroSubtitleInput = document.getElementById('setting-hero-subtitle');
+  const heroButtonTextInput = document.getElementById('setting-hero-button-text');
+  const contactTitleInput = document.getElementById('setting-contact-title');
+  const contactDescriptionInput = document.getElementById('setting-contact-description');
+  const contactEmailInput = document.getElementById('setting-contact-email');
 
   const formElement = document.getElementById('project-form');
   const formTitleElement = document.getElementById('form-title');
@@ -24,6 +32,7 @@
   const state = {
     projects: [],
     contactMessages: [],
+    siteSettings: {},
     editingId: null,
     adminPassword: '',
   };
@@ -60,11 +69,11 @@
 
   // 统一控制管理操作是否可用，避免未验证时误操作
   function setEditingControlsEnabled(enabled) {
-    formElement
-      .querySelectorAll('input, textarea, button')
-      .forEach((element) => {
+    [formElement, siteSettingsFormElement].forEach((formNode) => {
+      formNode.querySelectorAll('input, textarea, button').forEach((element) => {
         element.disabled = !enabled;
       });
+    });
 
     if (!enabled) {
       resetForm();
@@ -73,10 +82,11 @@
 
   function renderAuthStatus() {
     if (state.adminPassword) {
-      authStatusElement.textContent = '当前状态：已验证（可新增 / 编辑 / 删除）';
+      authStatusElement.textContent = '当前状态：已验证（可管理项目 / 网站配置 / 留言）';
       authStatusElement.classList.add('success');
       authStatusElement.classList.remove('error');
       saveButton.textContent = state.editingId ? '保存修改' : '保存';
+      saveSiteSettingsButton.textContent = '保存网站配置';
       return;
     }
 
@@ -84,6 +94,18 @@
     authStatusElement.classList.add('error');
     authStatusElement.classList.remove('success');
     saveButton.textContent = '请先验证口令';
+    saveSiteSettingsButton.textContent = '请先验证口令';
+  }
+
+  function fillSiteSettingsForm(siteSettings) {
+    state.siteSettings = siteSettings;
+    heroTitleInput.value = siteSettings.heroTitle || '';
+    // 首页仍读取 heroDescription，这里映射到管理页的 heroSubtitle 字段
+    heroSubtitleInput.value = siteSettings.heroDescription || '';
+    heroButtonTextInput.value = siteSettings.heroButtonText || '';
+    contactTitleInput.value = siteSettings.contactTitle || '';
+    contactDescriptionInput.value = siteSettings.contactDescription || '';
+    contactEmailInput.value = siteSettings.contactEmail || '';
   }
 
   function fillFormWithProject(project) {
@@ -212,7 +234,7 @@
       sessionStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, password);
       setEditingControlsEnabled(true);
       renderAuthStatus();
-      showFeedback('口令验证成功，现在可以管理项目', 'success');
+      showFeedback('口令验证成功，现在可以管理项目和网站配置', 'success');
       authFormElement.reset();
       await loadContactMessages();
     } catch (error) {
@@ -276,6 +298,25 @@
       loadingElement.textContent = '';
       listElement.innerHTML = '<p class="projects-status">项目加载失败，请刷新后重试。</p>';
       showFeedback(error.message || '项目加载失败', 'error');
+    }
+  }
+
+  async function loadSiteSettings() {
+    try {
+      const response = await fetch('/api/site-settings');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '网站配置读取失败');
+      }
+
+      const siteSettings =
+        data && typeof data.siteSettings === 'object' && data.siteSettings !== null
+          ? data.siteSettings
+          : {};
+      fillSiteSettingsForm(siteSettings);
+    } catch (error) {
+      showFeedback(error.message || '网站配置读取失败', 'error');
     }
   }
 
@@ -387,6 +428,50 @@
     }
   }
 
+  async function submitSiteSettings(event) {
+    event.preventDefault();
+
+    if (!state.adminPassword) {
+      showFeedback('请先通过口令验证，再修改网站配置', 'error');
+      return;
+    }
+
+    const payload = {
+      heroTitle: heroTitleInput.value.trim(),
+      heroSubtitle: heroSubtitleInput.value.trim(),
+      heroButtonText: heroButtonTextInput.value.trim(),
+      contactTitle: contactTitleInput.value.trim(),
+      contactDescription: contactDescriptionInput.value.trim(),
+      contactEmail: contactEmailInput.value.trim(),
+    };
+
+    if (Object.values(payload).some((value) => !value)) {
+      showFeedback('网站配置字段不能为空', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/site-settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '网站配置保存失败');
+      }
+
+      showFeedback(data.message || '网站配置保存成功', 'success');
+      await loadSiteSettings();
+    } catch (error) {
+      showFeedback(error.message || '网站配置保存失败，请稍后重试', 'error');
+    }
+  }
+
   function handleListClick(event) {
     const button = event.target.closest('button[data-action]');
     if (!button) {
@@ -424,10 +509,12 @@
   authFormElement.addEventListener('submit', handleAuthSubmit);
   logoutButton.addEventListener('click', handleLogout);
   formElement.addEventListener('submit', submitProject);
+  siteSettingsFormElement.addEventListener('submit', submitSiteSettings);
   cancelButton.addEventListener('click', resetForm);
   listElement.addEventListener('click', handleListClick);
 
   resetContactMessagesView('请先完成口令验证后查看留言列表。');
   restoreAuthFromSession();
   loadProjects();
+  loadSiteSettings();
 })();
