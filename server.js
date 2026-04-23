@@ -6,6 +6,7 @@ const {
   getProjects,
   getSiteSettings,
   createContactMessage,
+  getContactMessages,
   createProject,
   updateProjectById,
   deleteProjectById,
@@ -319,6 +320,23 @@ const server = http.createServer(async (req, res) => {
       }
 
       sendJson(res, 500, { message: '留言保存失败，请稍后重试' });
+      return;
+    }
+  }
+
+  // Contact 留言列表接口：仅管理口令验证通过后可查看
+  if (req.method === 'GET' && url.pathname === '/api/contact-messages') {
+    if (!isAdminAuthorized(req)) {
+      sendJson(res, 401, { message: '未通过管理口令验证，不能查看留言列表' });
+      return;
+    }
+
+    try {
+      const messages = getContactMessages();
+      sendJson(res, 200, { messages });
+      return;
+    } catch (error) {
+      sendJson(res, 500, { message: '留言列表读取失败，请稍后重试' });
       return;
     }
   }

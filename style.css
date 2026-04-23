@@ -443,6 +443,10 @@ body.dark-mode .admin-danger {
   color: var(--muted);
 }
 
+.admin-item-meta {
+  font-size: 0.92rem;
+}
+
 .admin-item-content a {
   color: var(--accent);
   word-break: break-all;
