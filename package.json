@@ -9,6 +9,11 @@
     "check:projects": "node scripts/projects-self-check.js",
     "check:site-settings": "node scripts/site-settings-self-check.js",
     "db:backup": "node scripts/db-backup.js",
-    "db:restore": "node scripts/db-restore.js"
+    "db:restore": "node scripts/db-restore.js",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop colinspace-app",
+    "pm2:restart": "pm2 restart colinspace-app",
+    "pm2:logs": "pm2 logs colinspace-app",
+    "pm2:save": "pm2 save"
   }
 }

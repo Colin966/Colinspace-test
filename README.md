@@ -121,6 +121,98 @@ ADMIN_PASSWORD=your-password npm start
 
 4. 使用 iPad Safari 打开管理页并验证操作。
 
+
+## 长期运行建议（PM2，最小自动化方案）
+
+为保持当前技术栈简单、对新手友好，推荐使用 **PM2** 管理 Node.js 进程。
+
+### 为什么选 PM2
+
+- 配置少，上手快（比手写 systemd 更直观）
+- 支持进程崩溃后自动重启
+- 提供统一日志查看命令
+- 支持开机自启配置（适合长期运行）
+
+### 1) 安装 PM2（服务器执行一次）
+
+```bash
+npm install -g pm2
+```
+
+### 2) 首次启动（长期运行）
+
+先初始化数据库（首次需要）：
+
+```bash
+npm run db:init
+```
+
+再启动 PM2 管理的服务：
+
+```bash
+ADMIN_PASSWORD=your-password npm run pm2:start
+```
+
+> 项目已提供 `ecosystem.config.js`，默认启动 `server.js`，端口默认 `3000`。
+
+### 3) 停止 / 重启 / 查看状态
+
+```bash
+# 停止服务
+npm run pm2:stop
+
+# 重启服务（更新代码后常用）
+npm run pm2:restart
+
+# 查看进程状态
+pm2 status
+```
+
+### 4) 服务崩溃后自动重启
+
+当前 `ecosystem.config.js` 已开启：
+
+- `autorestart: true`（进程异常退出自动拉起）
+- `restart_delay: 3000`（每次重启间隔 3 秒）
+- `max_restarts: 10`（短时间连续失败时限制重启次数）
+
+这意味着：如果 `server.js` 崩溃，PM2 会自动尝试拉起，无需人工干预。
+
+### 5) 如何查看日志
+
+```bash
+# 实时查看日志（推荐）
+npm run pm2:logs
+
+# 或查看最近日志快照
+pm2 logs colinspace-app --lines 200
+```
+
+另外，项目已将日志落盘到：
+
+- 标准输出：`pm2-out.log`
+- 错误输出：`pm2-error.log`
+
+### 6) 重启机器后继续自动拉起（可选但推荐）
+
+在服务器上执行一次：
+
+```bash
+pm2 startup
+npm run pm2:save
+```
+
+执行后，系统重启时会恢复 PM2 进程列表并自动启动服务。
+
+### 7) SQLite 数据文件在重启后继续可用
+
+- 当前数据库文件固定为：`db/portfolio.sqlite`
+- PM2 重启的是 Node 进程，不会清空该文件
+- 只要你不删除项目目录中的 `db/portfolio.sqlite`，历史数据会一直保留
+- 建议定期执行 `npm run db:backup` 备份
+
+> 结论：服务重启、PM2 重启、服务器重启后，都会继续使用同一个 SQLite 文件。
+
 ## 数据备份与恢复（本次新增）
 
 为了避免误操作导致数据丢失，项目新增了最小脚本化备份能力。
