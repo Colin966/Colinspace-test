@@ -1,11 +1,45 @@
 const button = document.getElementById('btn');
 const message = document.getElementById('message');
 const themeToggle = document.getElementById('theme-toggle');
+const projectsContainer = document.getElementById('projects');
+const projectsStatus = document.getElementById('projects-status');
 
 // 首页引导按钮文案
 button.addEventListener('click', () => {
   message.textContent = '欢迎来到我的作品集，向下查看项目案例。';
 });
+
+function renderProjects(projects) {
+  const cardsMarkup = projects
+    .map(
+      (project) => `
+        <article class="project-card">
+          <h2>${project.title}</h2>
+          <p>${project.description}</p>
+        </article>
+      `,
+    )
+    .join('');
+
+  projectsContainer.innerHTML = cardsMarkup;
+}
+
+async function loadProjects() {
+  try {
+    const response = await fetch('/api/projects');
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    renderProjects(data.projects || []);
+  } catch (error) {
+    projectsStatus.textContent = '项目加载失败，请稍后重试。';
+  }
+}
+
+loadProjects();
 
 // 读取并恢复用户的主题偏好
 const savedTheme = localStorage.getItem('theme');
