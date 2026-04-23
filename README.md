@@ -59,6 +59,86 @@ npm start
 Server running at http://localhost:3000
 ```
 
+## 最小发布方案（iPad 场景）
+
+下面给出一套保持当前技术栈不变、适合新手的最小发布思路：
+
+1. **前端文件（静态资源）**
+   - 文件包括：`index.html`、`admin.html`、`style.css`、`script.js`、`admin.js`、`projects-view.js`
+   - 这些文件由当前 Node.js 服务直接静态托管，无需单独打包。
+
+2. **后端服务（Node.js）**
+   - 后端入口是 `server.js`，负责 API 与静态文件服务。
+   - 发布时只需要安装依赖（本项目依赖极少）并运行 `npm start`。
+
+3. **SQLite 数据文件**
+   - 数据库文件路径：`db/portfolio.sqlite`。
+   - 这个文件就是核心数据，发布或迁移时要重点保留。
+
+### iPad 使用建议（最小可行）
+
+- **推荐方式**：将服务部署在一台常开设备（云主机/家用小主机）上，iPad 仅通过浏览器访问。
+- iPad 访问首页：`http://你的服务地址:3000/`
+- iPad 访问管理页：`http://你的服务地址:3000/admin.html`
+- 如果需要外网访问，请只开放必要端口，并务必设置 `ADMIN_PASSWORD`。
+
+### 最小部署步骤
+
+1. 在服务器上放置项目代码。
+2. 执行数据库初始化（首次）：
+
+```bash
+npm run db:init
+```
+
+3. 启动服务：
+
+```bash
+ADMIN_PASSWORD=your-password npm start
+```
+
+4. 使用 iPad Safari 打开管理页并验证操作。
+
+## 数据备份与恢复（本次新增）
+
+为了避免误操作导致数据丢失，项目新增了最小脚本化备份能力。
+
+### 备份目录约定
+
+- 备份统一存放在：`backups/`
+- 单个备份文件命名示例：`portfolio-20260423-120000.sqlite`
+- 这样可以避免把备份文件散落在根目录，保持主代码目录整洁。
+
+### 一键备份
+
+```bash
+npm run db:backup
+```
+
+执行后会把 `db/portfolio.sqlite` 复制到 `backups/`。
+
+### 一键恢复（默认恢复最新备份）
+
+```bash
+npm run db:restore
+```
+
+执行后会自动选择 `backups/` 里最新的 `.sqlite` 文件恢复到 `db/portfolio.sqlite`。
+
+### 按指定文件恢复
+
+```bash
+node scripts/db-restore.js portfolio-20260423-120000.sqlite
+```
+
+也可传入绝对路径进行恢复。
+
+### 备份/恢复注意事项
+
+- 恢复会**覆盖当前数据库**，建议先执行一次 `npm run db:backup` 再恢复。
+- 为避免文件锁冲突，建议在恢复前先停止服务。
+- 建议把 `backups/` 目录再同步到网盘/对象存储，形成异地备份。
+
 ## Projects 管理口令保护（最小实现）
 
 本项目为 `/admin.html` 增加了一个**最小口令保护**：
