@@ -1,10 +1,9 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { initializeDatabase, getProjects } = require('./db');
+const { initializeDatabase, getProjects, createContactMessage } = require('./db');
 
 const PORT = process.env.PORT || 3000;
-const contactMessages = [];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -113,22 +112,21 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const messageRecord = {
-        id: contactMessages.length + 1,
-        ...validation.payload,
-        createdAt: new Date().toISOString(),
-      };
-
-      contactMessages.push(messageRecord);
-      sendJson(res, 201, { message: '提交成功', id: messageRecord.id });
+      // 写入数据库并返回新增记录 id
+      const insertedId = createContactMessage(validation.payload);
+      sendJson(res, 201, { message: '提交成功', id: insertedId });
       return;
     } catch (error) {
       if (error.message === 'PAYLOAD_TOO_LARGE') {
         sendJson(res, 413, { message: '请求体过大' });
         return;
       }
+      if (error instanceof SyntaxError) {
+        sendJson(res, 400, { message: '请求数据格式错误，需为 JSON' });
+        return;
+      }
 
-      sendJson(res, 400, { message: '请求数据格式错误' });
+      sendJson(res, 500, { message: '留言保存失败，请稍后重试' });
       return;
     }
   }

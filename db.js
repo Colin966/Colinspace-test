@@ -45,6 +45,17 @@ function initializeDatabase() {
     )
   `);
 
+  // 建表：联系留言，保留最基础字段与提交时间
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contact_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   const countRow = db.prepare('SELECT COUNT(*) AS count FROM projects').get();
 
   // 首次初始化时写入最少量示例数据，保证前端可展示
@@ -75,8 +86,23 @@ function getProjects() {
   return rows;
 }
 
+function createContactMessage(payload) {
+  const db = openDatabase();
+  const insertStatement = db.prepare(
+    `INSERT INTO contact_messages (name, email, message, created_at)
+     VALUES (?, ?, ?, ?)`
+  );
+  const createdAt = new Date().toISOString();
+  const result = insertStatement.run(payload.name, payload.email, payload.message, createdAt);
+  db.close();
+
+  // sqlite 的 lastInsertRowid 是新增记录 id
+  return Number(result.lastInsertRowid);
+}
+
 module.exports = {
   DB_PATH,
   initializeDatabase,
   getProjects,
+  createContactMessage,
 };

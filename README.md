@@ -1,21 +1,23 @@
-# 简洁静态网站（Phase 3：Projects 接入数据库）
+# 简洁静态网站（Phase 4：Projects + Contact 接入数据库）
 
-这是一个轻量级个人网站示例。第 3 阶段将 Projects 从 mock 数据切换为 SQLite 数据库读取，前端项目列表渲染逻辑保持不变。
+这是一个轻量级个人网站示例。当前阶段已将 Projects 与 Contact 留言都接入 SQLite，前端页面结构与表单交互方式保持不变。
 
 ## 本阶段完成内容
 
 - 新增 SQLite 数据库读写模块（使用 Node.js 内置 `node:sqlite`）
 - 建立 `projects` 数据表
+- 建立 `contact_messages` 数据表
 - `GET /api/projects` 改为从数据库查询并返回
+- `POST /api/contact-messages` 改为写入数据库并返回新增 id
 - 首页项目区改为复用独立渲染模块，便于最小自检
 - 数据库为空时，前端显示“暂无项目数据”兜底提示
 - 增加 `check:projects` 自检脚本（接口稳定性 + 首页项目区验证）
-- 保留 `POST /api/contact-messages` 既有功能
+- 保留联系表单结构、中文提示与基础校验逻辑
 
 ## 文件说明
 
-- `server.js`：HTTP 服务，`GET /api/projects` 读数据库
-- `db.js`：数据库初始化、建表、查询项目数据
+- `server.js`：HTTP 服务，Projects/Contact 接口都走数据库
+- `db.js`：数据库初始化、建表、查询项目、写入留言
 - `projects-view.js`：Projects 卡片与空数据提示的渲染模块
 - `script.js`：前端页面交互与项目加载逻辑（调用渲染模块）
 - `scripts/init-db.js`：手动初始化数据库脚本
@@ -91,7 +93,7 @@ curl http://localhost:3000/api/projects
    - 数据库有数据：显示项目卡片
    - 数据库为空：显示“暂时没有项目数据，请稍后再来看。”
 
-## 其他接口测试
+## Contact 留言数据库验证
 
 ### 1) 测试联系表单接口（成功）
 
@@ -101,7 +103,7 @@ curl -X POST http://localhost:3000/api/contact-messages \
   -d '{"name":"Colin","email":"colin@example.com","message":"你好，这是测试留言。"}'
 ```
 
-预期：返回 `201`，并包含 `message: "提交成功"` 与 `id`。
+预期：返回 `201`，并包含 `message: "提交成功"` 与 `id`（数据库新增记录主键）。
 
 ### 2) 测试联系表单接口（失败）
 
@@ -112,3 +114,13 @@ curl -X POST http://localhost:3000/api/contact-messages \
 ```
 
 预期：返回 `400`，并包含中文错误信息。
+
+### 3) 验证留言是否写入数据库
+
+先提交一条成功请求后，再执行：
+
+```bash
+node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('./db/portfolio.sqlite'); const rows = db.prepare('SELECT id, name, email, message, created_at FROM contact_messages ORDER BY id DESC LIMIT 5').all(); console.table(rows); db.close();"
+```
+
+预期：输出表格中包含刚提交的留言记录，字段含 `id / name / email / message / created_at`。
