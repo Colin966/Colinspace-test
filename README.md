@@ -1,35 +1,33 @@
-# 简洁静态网站（Phase 4：Projects + Contact 接入数据库）
+# 简洁静态网站（Phase 5：最小配置化 Site Settings）
 
-这是一个轻量级个人网站示例。当前阶段已将 Projects 与 Contact 留言都接入 SQLite，前端页面结构与表单交互方式保持不变。
+这是一个轻量级个人网站示例。当前阶段在保留原有页面布局、样式和交互的前提下，新增了“最小配置化能力”：首页 Hero 文案和 Contact 展示信息改为通过接口读取。
 
 ## 本阶段完成内容
 
-- 新增 SQLite 数据库读写模块（使用 Node.js 内置 `node:sqlite`）
-- 建立 `projects` 数据表
-- 建立 `contact_messages` 数据表
-- `GET /api/projects` 改为从数据库查询并返回
-- `POST /api/contact-messages` 改为写入数据库并返回新增 id
-- 首页项目区改为复用独立渲染模块，便于最小自检
-- 数据库为空时，前端显示“暂无项目数据”兜底提示
-- 增加 `check:projects` 自检脚本（接口稳定性 + 首页项目区验证）
-- 保留联系表单结构、中文提示与基础校验逻辑
+- 新增 `site_settings` 数据表（Key-Value 结构）
+- 新增 `GET /api/site-settings` 接口
+- 首页 Hero 文案改为从接口读取
+- Contact 展示文案与 Footer 邮箱改为从接口读取
+- 前后端均提供默认值与中文兜底内容（接口异常或缺字段也可正常展示）
+- 保留原有页面布局、样式与主题切换、表单交互逻辑
+- 新增 `check:site-settings` 自检脚本
 
 ## 文件说明
 
-- `server.js`：HTTP 服务，Projects/Contact 接口都走数据库
-- `db.js`：数据库初始化、建表、查询项目、写入留言
-- `projects-view.js`：Projects 卡片与空数据提示的渲染模块
-- `script.js`：前端页面交互与项目加载逻辑（调用渲染模块）
+- `server.js`：HTTP 服务，新增 `GET /api/site-settings`
+- `db.js`：数据库初始化、建表、站点配置读写默认逻辑
+- `script.js`：前端加载并应用站点配置（含兜底）
+- `index.html`：为可配置文案增加 DOM 标识（id）
 - `scripts/init-db.js`：手动初始化数据库脚本
-- `scripts/projects-self-check.js`：最小自动化自检脚本
-- `.gitignore`：忽略本地数据库文件
-- `package.json`：提供 `start`、`db:init`、`check:projects` 命令
+- `scripts/projects-self-check.js`：Projects 接口与页面渲染自检
+- `scripts/site-settings-self-check.js`：Site Settings 接口自检
+- `package.json`：新增 `check:site-settings` 命令
 
 ## 环境要求
 
 - Node.js 22+（需支持内置 `node:sqlite` 和全局 `fetch`）
 
-## 如何初始化数据库
+## 如何初始化配置数据
 
 在项目根目录执行：
 
@@ -43,7 +41,16 @@ npm run db:init
 数据库初始化完成：/workspace/Colinspace-test/db/portfolio.sqlite
 ```
 
-> 说明：`server.js` 启动时也会自动调用初始化逻辑；手动执行 `db:init` 适合首次安装后显式准备数据。
+初始化会自动做两件事：
+
+1. 建立 `site_settings` 表
+2. 当配置为空时写入默认中文配置（不会覆盖已有配置）
+
+### 可选：手动修改配置示例
+
+```bash
+node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('./db/portfolio.sqlite'); db.prepare('UPDATE site_settings SET value = ? WHERE key = ?').run('你好，欢迎来到我的网站', 'heroTitle'); db.close(); console.log('配置更新完成');"
+```
 
 ## 如何运行项目
 
@@ -63,39 +70,37 @@ Server running at http://localhost:3000
 http://localhost:3000
 ```
 
-## 数据库版 Projects 验证步骤
+## 如何测试接口
 
-### 1) 运行自动化自检（推荐）
+### 1) 测试 Site Settings 接口（手动）
+
+```bash
+curl http://localhost:3000/api/site-settings
+```
+
+预期：返回 `siteSettings` 对象，包含 Hero 与 Contact 的配置字段。
+
+### 2) 测试 Site Settings 接口（自动化）
+
+```bash
+npm run check:site-settings
+```
+
+该脚本会校验：
+
+- `GET /api/site-settings` 返回 200
+- 返回值与数据库读取一致
+- 所有默认配置字段都是非空字符串
+
+### 3) 测试 Projects 接口（自动化）
 
 ```bash
 npm run check:projects
 ```
 
-该脚本会自动完成：
+## 现有 Contact 留言接口验证
 
-- 启动服务并请求两次 `GET /api/projects`
-- 校验接口返回与数据库查询结果一致，确认稳定性
-- 校验首页包含项目区容器与渲染模块加载
-- 校验“有数据渲染卡片 / 空数据显示兜底提示”逻辑
-
-### 2) 手动验证接口
-
-```bash
-curl http://localhost:3000/api/projects
-```
-
-预期：返回 `projects` 数组，内容来自数据库。
-
-### 3) 手动验证首页项目区
-
-1. 打开 `http://localhost:3000`
-2. 查看“项目”区域：
-   - 数据库有数据：显示项目卡片
-   - 数据库为空：显示“暂时没有项目数据，请稍后再来看。”
-
-## Contact 留言数据库验证
-
-### 1) 测试联系表单接口（成功）
+### 成功请求
 
 ```bash
 curl -X POST http://localhost:3000/api/contact-messages \
@@ -103,24 +108,10 @@ curl -X POST http://localhost:3000/api/contact-messages \
   -d '{"name":"Colin","email":"colin@example.com","message":"你好，这是测试留言。"}'
 ```
 
-预期：返回 `201`，并包含 `message: "提交成功"` 与 `id`（数据库新增记录主键）。
-
-### 2) 测试联系表单接口（失败）
+### 失败请求
 
 ```bash
 curl -X POST http://localhost:3000/api/contact-messages \
   -H "Content-Type: application/json" \
   -d '{"name":"","email":"bad-email","message":""}'
 ```
-
-预期：返回 `400`，并包含中文错误信息。
-
-### 3) 验证留言是否写入数据库
-
-先提交一条成功请求后，再执行：
-
-```bash
-node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('./db/portfolio.sqlite'); const rows = db.prepare('SELECT id, name, email, message, created_at FROM contact_messages ORDER BY id DESC LIMIT 5').all(); console.table(rows); db.close();"
-```
-
-预期：输出表格中包含刚提交的留言记录，字段含 `id / name / email / message / created_at`。

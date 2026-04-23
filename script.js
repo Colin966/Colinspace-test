@@ -8,9 +8,107 @@ const projectsStatus = document.getElementById('projects-status');
 const contactForm = document.getElementById('contact-form');
 const contactFeedback = document.getElementById('contact-feedback');
 
+const heroEyebrow = document.getElementById('hero-eyebrow');
+const heroTitle = document.getElementById('hero-title');
+const heroDescription = document.getElementById('hero-description');
+const contactTitle = document.getElementById('contact-title');
+const contactDescription = document.getElementById('contact-description');
+const contactEmailLink = document.getElementById('contact-email-link');
+
+// 前端兜底：接口失败或缺字段时使用，确保页面仍是中文可读内容
+const defaultSiteSettings = {
+  heroEyebrow: '产品设计与前端实践',
+  heroTitle: '用清晰的体验，把复杂问题做简单',
+  heroDescription:
+    '我专注于构建高质量网页与产品原型，强调可读性、响应速度与可维护性，让每一次迭代都更高效。',
+  heroButtonText: '开始了解',
+  heroMessage: '欢迎来到我的作品集，向下查看项目案例。',
+  contactTitle: '联系',
+  contactDescription:
+    '如果你有合作想法、项目需求或交流计划，欢迎随时发来消息，我会尽快回复。',
+  contactEmail: 'hello@example.com',
+  contactEmailLabel: 'hello@example.com',
+};
+
+let currentSiteSettings = { ...defaultSiteSettings };
+
+function sanitizeSetting(value, fallback) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
+function applySiteSettings(siteSettings) {
+  currentSiteSettings = {
+    ...defaultSiteSettings,
+    ...siteSettings,
+  };
+
+  heroEyebrow.textContent = sanitizeSetting(
+    currentSiteSettings.heroEyebrow,
+    defaultSiteSettings.heroEyebrow
+  );
+  heroTitle.textContent = sanitizeSetting(currentSiteSettings.heroTitle, defaultSiteSettings.heroTitle);
+  heroDescription.textContent = sanitizeSetting(
+    currentSiteSettings.heroDescription,
+    defaultSiteSettings.heroDescription
+  );
+  button.textContent = sanitizeSetting(
+    currentSiteSettings.heroButtonText,
+    defaultSiteSettings.heroButtonText
+  );
+
+  contactTitle.textContent = sanitizeSetting(
+    currentSiteSettings.contactTitle,
+    defaultSiteSettings.contactTitle
+  );
+  contactDescription.textContent = sanitizeSetting(
+    currentSiteSettings.contactDescription,
+    defaultSiteSettings.contactDescription
+  );
+
+  const safeEmail = sanitizeSetting(
+    currentSiteSettings.contactEmail,
+    defaultSiteSettings.contactEmail
+  );
+  const safeEmailLabel = sanitizeSetting(
+    currentSiteSettings.contactEmailLabel,
+    defaultSiteSettings.contactEmailLabel
+  );
+  contactEmailLink.href = `mailto:${safeEmail}`;
+  contactEmailLink.textContent = safeEmailLabel;
+}
+
+async function loadSiteSettings() {
+  try {
+    const response = await fetch('/api/site-settings');
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const siteSettings =
+      data && typeof data.siteSettings === 'object' && data.siteSettings !== null
+        ? data.siteSettings
+        : {};
+
+    applySiteSettings(siteSettings);
+  } catch (error) {
+    // 配置接口失败时也保证页面稳定展示
+    applySiteSettings(defaultSiteSettings);
+  }
+}
+
 // 首页引导按钮文案
 button.addEventListener('click', () => {
-  message.textContent = '欢迎来到我的作品集，向下查看项目案例。';
+  message.textContent = sanitizeSetting(
+    currentSiteSettings.heroMessage,
+    defaultSiteSettings.heroMessage
+  );
 });
 
 function renderProjects(projects) {
@@ -43,6 +141,7 @@ async function loadProjects() {
   }
 }
 
+loadSiteSettings();
 loadProjects();
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
