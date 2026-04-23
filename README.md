@@ -1,11 +1,11 @@
-# Simple Static Website
+# 简洁静态网站
 
-A minimal static site with:
+一个轻量级的个人网站示例，包含以下文件：
 
 - `index.html`
 - `style.css`
 - `script.js`
 
-## Run
+## 运行方式
 
-Open `index.html` in your browser.
+直接在浏览器中打开 `index.html` 即可。
