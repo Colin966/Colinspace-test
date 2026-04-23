@@ -42,10 +42,22 @@
         <p class="contact-text">
           如果你有合作想法、项目需求或交流计划，欢迎随时发来消息，我会尽快回复。
         </p>
-        <div class="contact-links">
-          <a href="mailto:hello@example.com">hello@example.com</a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">领英</a>
-        </div>
+        <form id="contact-form" class="contact-form" novalidate>
+          <label class="form-field" for="contact-name">
+            <span>Name</span>
+            <input id="contact-name" name="name" type="text" maxlength="50" required />
+          </label>
+          <label class="form-field" for="contact-email">
+            <span>Email</span>
+            <input id="contact-email" name="email" type="email" maxlength="100" required />
+          </label>
+          <label class="form-field" for="contact-message">
+            <span>Message</span>
+            <textarea id="contact-message" name="message" rows="4" maxlength="500" required></textarea>
+          </label>
+          <button type="submit" class="contact-submit">发送</button>
+          <p id="contact-feedback" class="contact-feedback" aria-live="polite"></p>
+        </form>
       </section>
     </main>
 

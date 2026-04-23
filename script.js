@@ -3,6 +3,8 @@ const message = document.getElementById('message');
 const themeToggle = document.getElementById('theme-toggle');
 const projectsContainer = document.getElementById('projects');
 const projectsStatus = document.getElementById('projects-status');
+const contactForm = document.getElementById('contact-form');
+const contactFeedback = document.getElementById('contact-feedback');
 
 // 首页引导按钮文案
 button.addEventListener('click', () => {
@@ -46,6 +48,74 @@ async function loadProjects() {
 }
 
 loadProjects();
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_MESSAGE_LENGTH = 500;
+
+// 基础表单校验：必填、邮箱格式、留言长度
+function validateContactForm(formData) {
+  const name = formData.get('name')?.trim() || '';
+  const email = formData.get('email')?.trim() || '';
+  const messageText = formData.get('message')?.trim() || '';
+
+  if (!name || !email || !messageText) {
+    return { valid: false, message: '请完整填写 name、email 和 message。' };
+  }
+
+  if (!emailPattern.test(email)) {
+    return { valid: false, message: '邮箱格式不正确，请检查后再提交。' };
+  }
+
+  if (messageText.length > MAX_MESSAGE_LENGTH) {
+    return { valid: false, message: `留言不能超过 ${MAX_MESSAGE_LENGTH} 个字符。` };
+  }
+
+  return {
+    valid: true,
+    payload: { name, email, message: messageText },
+  };
+}
+
+function showContactFeedback(messageText, type) {
+  contactFeedback.textContent = messageText;
+  contactFeedback.classList.remove('success', 'error');
+  contactFeedback.classList.add(type);
+}
+
+// 提交联系表单到后端接口
+contactForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  showContactFeedback('', 'success');
+
+  const formData = new FormData(contactForm);
+  const validation = validateContactForm(formData);
+
+  if (!validation.valid) {
+    showContactFeedback(validation.message, 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/contact-messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(validation.payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || '提交失败');
+    }
+
+    contactForm.reset();
+    showContactFeedback('提交成功，感谢你的留言！', 'success');
+  } catch (error) {
+    showContactFeedback('提交失败，请稍后重试。', 'error');
+  }
+});
 
 // 读取并恢复用户的主题偏好
 const savedTheme = localStorage.getItem('theme');
