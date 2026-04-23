@@ -117,6 +117,31 @@ function readRequestBody(req) {
   });
 }
 
+async function readJsonBody(req) {
+  const rawBody = await readRequestBody(req);
+
+  try {
+    return JSON.parse(rawBody || '{}');
+  } catch (error) {
+    throw new Error('INVALID_JSON');
+  }
+}
+
+function handleRequestBodyError(res, error, fallbackCode, fallbackMessage) {
+  if (error && error.message === 'PAYLOAD_TOO_LARGE') {
+    sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
+    return true;
+  }
+
+  if (error && error.message === 'INVALID_JSON') {
+    sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
+    return true;
+  }
+
+  sendApiError(res, 500, fallbackCode, fallbackMessage);
+  return true;
+}
+
 function validateContactPayload(payload) {
   const name = typeof payload.name === 'string' ? payload.name.trim() : '';
   const email = typeof payload.email === 'string' ? payload.email.trim() : '';
@@ -317,8 +342,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       try {
-        const rawBody = await readRequestBody(req);
-        const parsedBody = JSON.parse(rawBody || '{}');
+        const parsedBody = await readJsonBody(req);
         const validation = validateSiteSettingsPayload(parsedBody);
 
         if (!validation.valid) {
@@ -330,16 +354,12 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 200, { message: '网站配置修改成功' });
         return;
       } catch (error) {
-        if (error.message === 'PAYLOAD_TOO_LARGE') {
-          sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-          return;
-        }
-        if (error instanceof SyntaxError) {
-          sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-          return;
-        }
-
-        sendApiError(res, 500, 'SITE_SETTINGS_UPDATE_FAILED', '网站配置修改失败，请稍后重试');
+        handleRequestBodyError(
+          res,
+          error,
+          'SITE_SETTINGS_UPDATE_FAILED',
+          '网站配置修改失败，请稍后重试'
+        );
         return;
       }
     }
@@ -359,8 +379,7 @@ const server = http.createServer(async (req, res) => {
   // 管理口令校验接口：前端用于确认口令是否正确
   if (req.method === 'POST' && url.pathname === '/api/admin/verify') {
     try {
-      const rawBody = await readRequestBody(req);
-      const parsedBody = JSON.parse(rawBody || '{}');
+      const parsedBody = await readJsonBody(req);
       const password = typeof parsedBody.password === 'string' ? parsedBody.password.trim() : '';
 
       if (!password) {
@@ -376,16 +395,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { message: '口令验证通过' });
       return;
     } catch (error) {
-      if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-        return;
-      }
-      if (error instanceof SyntaxError) {
-        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-        return;
-      }
-
-      sendApiError(res, 500, 'ADMIN_VERIFY_FAILED', '口令校验失败，请稍后重试');
+      handleRequestBodyError(res, error, 'ADMIN_VERIFY_FAILED', '口令校验失败，请稍后重试');
       return;
     }
   }
@@ -397,8 +407,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const rawBody = await readRequestBody(req);
-      const parsedBody = JSON.parse(rawBody || '{}');
+      const parsedBody = await readJsonBody(req);
       const validation = validateProjectPayload(parsedBody);
 
       if (!validation.valid) {
@@ -410,16 +419,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 201, { message: '项目新增成功', id: insertedId });
       return;
     } catch (error) {
-      if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-        return;
-      }
-      if (error instanceof SyntaxError) {
-        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-        return;
-      }
-
-      sendApiError(res, 500, 'PROJECT_CREATE_FAILED', '项目新增失败，请稍后重试');
+      handleRequestBodyError(res, error, 'PROJECT_CREATE_FAILED', '项目新增失败，请稍后重试');
       return;
     }
   }
@@ -457,8 +457,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const rawBody = await readRequestBody(req);
-      const parsedBody = JSON.parse(rawBody || '{}');
+      const parsedBody = await readJsonBody(req);
       const validation = validateProjectPayload(parsedBody);
 
       if (!validation.valid) {
@@ -475,16 +474,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { message: '项目修改成功' });
       return;
     } catch (error) {
-      if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-        return;
-      }
-      if (error instanceof SyntaxError) {
-        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-        return;
-      }
-
-      sendApiError(res, 500, 'PROJECT_UPDATE_FAILED', '项目修改失败，请稍后重试');
+      handleRequestBodyError(res, error, 'PROJECT_UPDATE_FAILED', '项目修改失败，请稍后重试');
       return;
     }
   }
@@ -492,8 +482,7 @@ const server = http.createServer(async (req, res) => {
   // Contact 接口：接收联系表单提交
   if (req.method === 'POST' && url.pathname === '/api/contact-messages') {
     try {
-      const rawBody = await readRequestBody(req);
-      const parsedBody = JSON.parse(rawBody || '{}');
+      const parsedBody = await readJsonBody(req);
       const validation = validateContactPayload(parsedBody);
 
       if (!validation.valid) {
@@ -506,16 +495,12 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 201, { message: '提交成功', id: insertedId });
       return;
     } catch (error) {
-      if (error.message === 'PAYLOAD_TOO_LARGE') {
-        sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', '请求体过大');
-        return;
-      }
-      if (error instanceof SyntaxError) {
-        sendApiError(res, 400, 'INVALID_JSON', '请求数据格式错误，需为 JSON');
-        return;
-      }
-
-      sendApiError(res, 500, 'CONTACT_MESSAGE_CREATE_FAILED', '留言保存失败，请稍后重试');
+      handleRequestBodyError(
+        res,
+        error,
+        'CONTACT_MESSAGE_CREATE_FAILED',
+        '留言保存失败，请稍后重试'
+      );
       return;
     }
   }

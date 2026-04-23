@@ -177,6 +177,14 @@ function showContactFeedback(messageText, type) {
   contactFeedback.classList.add(type);
 }
 
+async function parseApiResponse(response) {
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || '请求失败');
+  }
+  return data;
+}
+
 // 提交联系表单到后端接口
 contactForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -198,17 +206,12 @@ contactForm.addEventListener('submit', async (event) => {
       },
       body: JSON.stringify(validation.payload),
     });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || '提交失败');
-    }
+    await parseApiResponse(response);
 
     contactForm.reset();
     showContactFeedback('提交成功，感谢你的留言！', 'success');
   } catch (error) {
-    showContactFeedback('提交失败，请稍后重试。', 'error');
+    showContactFeedback(error.message || '提交失败，请稍后重试。', 'error');
   }
 });
 
