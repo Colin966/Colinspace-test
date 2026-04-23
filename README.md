@@ -1,55 +1,36 @@
-# 简洁静态网站（Phase 5：最小配置化 Site Settings）
+# 简洁静态网站（Phase 6：Projects 最小管理能力）
 
-这是一个轻量级个人网站示例。当前阶段在保留原有页面布局、样式和交互的前提下，新增了“最小配置化能力”：首页 Hero 文案和 Contact 展示信息改为通过接口读取。
+这是一个轻量级个人网站示例。当前阶段在尽量不改动现有前端页面结构和样式的前提下，补齐了 Projects 的最小管理能力（新增 / 修改 / 删除接口），并保持原有查询接口不变。
 
 ## 本阶段完成内容
 
-- 新增 `site_settings` 数据表（Key-Value 结构）
-- 新增 `GET /api/site-settings` 接口
-- 首页 Hero 文案改为从接口读取
-- Contact 展示文案与 Footer 邮箱改为从接口读取
-- 前后端均提供默认值与中文兜底内容（接口异常或缺字段也可正常展示）
-- 保留原有页面布局、样式与主题切换、表单交互逻辑
-- 新增 `check:site-settings` 自检脚本
+- 保持 `GET /api/projects` 不变
+- 新增 `POST /api/projects`
+- 新增 `PUT /api/projects/:id`
+- 新增 `DELETE /api/projects/:id`
+- 为 Projects 增加基础校验：
+  - `title` 必填
+  - `description` 最大长度 500
+  - `link` 为空或必须以 `http://` / `https://` 开头
+- 新接口统一返回清晰中文成功/失败信息
+- 数据库 `projects` 表新增 `link` 字段，并兼容旧库自动补列
 
 ## 文件说明
 
-- `server.js`：HTTP 服务，新增 `GET /api/site-settings`
-- `db.js`：数据库初始化、建表、站点配置读写默认逻辑
-- `script.js`：前端加载并应用站点配置（含兜底）
-- `index.html`：为可配置文案增加 DOM 标识（id）
-- `scripts/init-db.js`：手动初始化数据库脚本
-- `scripts/projects-self-check.js`：Projects 接口与页面渲染自检
-- `scripts/site-settings-self-check.js`：Site Settings 接口自检
-- `package.json`：新增 `check:site-settings` 命令
+- `server.js`：新增 Projects 的 POST / PUT / DELETE 路由与校验逻辑
+- `db.js`：新增 Projects 的增删改方法，并补充 `link` 字段迁移逻辑
+- `README.md`：更新本阶段说明与 `curl` 测试方式
 
 ## 环境要求
 
 - Node.js 22+（需支持内置 `node:sqlite` 和全局 `fetch`）
 
-## 如何初始化配置数据
+## 如何初始化数据库
 
 在项目根目录执行：
 
 ```bash
 npm run db:init
-```
-
-预期输出类似：
-
-```text
-数据库初始化完成：/workspace/Colinspace-test/db/portfolio.sqlite
-```
-
-初始化会自动做两件事：
-
-1. 建立 `site_settings` 表
-2. 当配置为空时写入默认中文配置（不会覆盖已有配置）
-
-### 可选：手动修改配置示例
-
-```bash
-node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('./db/portfolio.sqlite'); db.prepare('UPDATE site_settings SET value = ? WHERE key = ?').run('你好，欢迎来到我的网站', 'heroTitle'); db.close(); console.log('配置更新完成');"
 ```
 
 ## 如何运行项目
@@ -70,48 +51,84 @@ Server running at http://localhost:3000
 http://localhost:3000
 ```
 
-## 如何测试接口
+## 如何用 curl 测试 Projects 接口
 
-### 1) 测试 Site Settings 接口（手动）
+### 1) 查询项目列表（保持不变）
 
 ```bash
-curl http://localhost:3000/api/site-settings
+curl http://localhost:3000/api/projects
 ```
 
-预期：返回 `siteSettings` 对象，包含 Hero 与 Contact 的配置字段。
+预期：返回 `projects` 数组。
 
-### 2) 测试 Site Settings 接口（自动化）
-
-```bash
-npm run check:site-settings
-```
-
-该脚本会校验：
-
-- `GET /api/site-settings` 返回 200
-- 返回值与数据库读取一致
-- 所有默认配置字段都是非空字符串
-
-### 3) 测试 Projects 接口（自动化）
+### 2) 新增项目（POST /api/projects）
 
 ```bash
-npm run check:projects
-```
-
-## 现有 Contact 留言接口验证
-
-### 成功请求
-
-```bash
-curl -X POST http://localhost:3000/api/contact-messages \
+curl -X POST http://localhost:3000/api/projects \
   -H "Content-Type: application/json" \
-  -d '{"name":"Colin","email":"colin@example.com","message":"你好，这是测试留言。"}'
+  -d '{
+    "title":"新的演示项目",
+    "description":"这是一个用于演示新增接口的项目。",
+    "link":"https://example.com/demo"
+  }'
 ```
 
-### 失败请求
+成功响应示例：
+
+```json
+{"message":"项目新增成功","id":4}
+```
+
+### 3) 修改项目（PUT /api/projects/:id）
 
 ```bash
-curl -X POST http://localhost:3000/api/contact-messages \
+curl -X PUT http://localhost:3000/api/projects/4 \
   -H "Content-Type: application/json" \
-  -d '{"name":"","email":"bad-email","message":""}'
+  -d '{
+    "title":"新的演示项目（已更新）",
+    "description":"这是更新后的描述。",
+    "link":"https://example.com/demo-v2"
+  }'
+```
+
+成功响应示例：
+
+```json
+{"message":"项目修改成功"}
+```
+
+### 4) 删除项目（DELETE /api/projects/:id）
+
+```bash
+curl -X DELETE http://localhost:3000/api/projects/4
+```
+
+成功响应示例：
+
+```json
+{"message":"项目删除成功"}
+```
+
+### 5) 参数校验失败示例
+
+```bash
+curl -X POST http://localhost:3000/api/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title":"",
+    "description":"描述",
+    "link":"ftp://invalid-link"
+  }'
+```
+
+可能返回：
+
+```json
+{"message":"项目标题为必填项"}
+```
+
+或：
+
+```json
+{"message":"项目链接格式不正确，需以 http:// 或 https:// 开头"}
 ```
